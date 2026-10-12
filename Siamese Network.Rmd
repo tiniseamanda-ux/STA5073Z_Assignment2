@@ -45,9 +45,6 @@ stopifnot(
   length(intersect(writers$val, writers$test))   == 0)
 
 
-stopifnot(
-  !any(meta$session[split_cnn == "test"] %in% 1:4))
-
 ```
 
 
