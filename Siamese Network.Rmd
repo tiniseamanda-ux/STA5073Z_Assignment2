@@ -1,0 +1,44 @@
+---
+title: "Siamese Network"
+author: "Amanda Tinise"
+date: "2026-10-12"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Siamese hyperparameter models
+
+## 4.8 Siamese Model 1: baseline
+
+```{r}
+set_random_seed(2026)
+
+siam1 <- build_siamese(
+  emb = 32,
+  filters = 32,
+  dropout = 0.2,
+  margin = 1,
+  lr = 1e-3
+)
+
+hist1_sia <- siam1 |> fit(
+  tr$x,
+  tr$y,
+  epochs = 20,
+  batch_size = 128,
+  validation_data = list(va$x, va$y),
+  callbacks = list(
+    callback_early_stopping(
+      monitor = "val_loss",
+      patience = 3,
+      restore_best_weights = TRUE
+    )
+  )
+)
+
+plot(hist1_sia)
+```
+
