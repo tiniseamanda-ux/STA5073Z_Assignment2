@@ -104,13 +104,13 @@ ggsave("eda_writer_session_grid.png", plot = eda_grid, width = 7, height = 5, dp
 ```
 
 **Visible Sources of Variation**\
-When inspecting the generated matrix, two clear layers of visual variance emerge: \
-**\*Inter-Writer Style Variation:** Distinct anatomical differences are obvious between writers. For example, Writer 1 shows wide, sweeping curvilinear tracking, whereas Writer 5 employs tighter, more geometric, compact strokes. \
+When inspecting the generated matrix, two clear layers of visual variance emerge:\
+**\*Inter-Writer Style Variation:** Distinct anatomical differences are obvious between writers. For example, Writer 1 shows wide, sweeping curvilinear tracking, whereas Writer 5 employs tighter, more geometric, compact strokes.\
 \***Intra-Writer Session Drift:** An individual's writing signature changes noticeably between recording blocks. The character weights, overall slant, and structural aspect ratios shift between Session 1, Session 3, and Session 5. This simulates real-world shifts caused by natural fatigue, changes in writing speed, or alternating writing instruments.
 
-**Limitations of the Simulated Data** \
+**Limitations of the Simulated Data**\
 While useful for framework prototyping, this simulated dataset displays structural characteristics that would not be present in true human handwriting:\
-**\*Uniform Stroke Distribution:** The ink distribution lacks realistic pen-up/pen-down acceleration artifacts, ink pooling, or authentic friction-based line tapering. \
+**\*Uniform Stroke Distribution:** The ink distribution lacks realistic pen-up/pen-down acceleration artifacts, ink pooling, or authentic friction-based line tapering.\
 **\*Grid Bounds and Normalisation:** Every digit is pre-centered within a clean 28x28 bounding box with completely uniform pixel spacing, removing real-world segmentation problems like overlapping characters or margin clipping.
 
 ## Task 4: Explicit Data Partitioning & Out-of-Session Strategy
@@ -145,10 +145,10 @@ saveRDS(list(x = x_val, y = y_val_person), "val_split.rds")
 saveRDS(list(x = x_test, y = y_test_person, metadata = metadata[test_idx, ]), "test_split.rds")
 ```
 
-**Justification of Generalization Type** \
+**Justification of Generalization Type**\
 Our validation framework is explicitly designed to measure **session-invariant temporal and material generalization**. Instead of evaluating whether the network can recognize familiar strokes made during a known recording block, this split tests if the CNN has extracted baseline biometric properties that persist when a writer encounters new conditions at a completely different time.
 
-**Analysis of Data Leakage & Deceptive Performance** \
+**Analysis of Data Leakage & Deceptive Performance**\
 If a traditional, random train/test split were executed across the combined 25,000 image pool, individual replicates from identical writer-session combinations would be mixed into both arrays simultaneously.
 
 Because consecutive images drawn within the same session block are highly correlated, this structure introduces severe **data leakage**. The network would effortlessly memorize session-specific text thickness, positioning biases, and pen quirks rather than true identity profiles. This leakage would result in an optimistic but completely superficial test accuracy (\~99%) that would instantly collapse if deployed against genuine new writing samples in production. Completely isolating Session 5 blocks this leakage entirely.
