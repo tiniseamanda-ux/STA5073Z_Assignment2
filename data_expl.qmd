@@ -30,12 +30,18 @@ if (!file.exists("handwriting.rds")) {
 raw_data <- readRDS("handwriting.rds")
 
 # Scale pixel tensors directly from integer space to normalized floating bounds
+<<<<<<< HEAD
 x_all <- raw_data$images / 255
 metadata <- as_tibble(raw_data$metadata)
+=======
+x_all <- raw_data\$images / 255
+metadata <- as_tibble(raw_data\$metadata)
+>>>>>>> c412f84cd7fad1d55c4aa02f23485b2e2557d6be
 ```
 
 ## Task 1: Exploratory Data Analysis & Visualisation Matrix
 
+<<<<<<< HEAD
 \# 1. DATASET STRUCTURE AND BALANCE
 
 ```{r}
@@ -345,6 +351,8 @@ ggsave(
 
 ```
 
+=======
+>>>>>>> c412f84cd7fad1d55c4aa02f23485b2e2557d6be
 We explore variations across writers and sessions by isolating a single digit ('2') and its first replicate. This allows us to inspect style drift patterns cleanly.
 
 ```{r task-1-eda}
