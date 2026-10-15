@@ -235,11 +235,8 @@ ggsave(
   dpi = 300
 )
 
-
-
 # 4. BETWEEN-DIGIT VARIATION
 # Hold writer, session and replicate fixed
-
 
 target_writer <- 5
 target_session <- 1
@@ -290,13 +287,9 @@ ggsave(
   height = 3.2,
   dpi = 300
 )
-
-
-
 # 5. WITHIN-SESSION VARIATION
 # Holding writer, digit and session fixed
 # Change replicate only
-
 
 target_writer <- 5
 target_digit <- 2
