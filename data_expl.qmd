@@ -30,8 +30,8 @@ if (!file.exists("handwriting.rds")) {
 raw_data <- readRDS("handwriting.rds")
 
 # Scale pixel tensors directly from integer space to normalized floating bounds
-x_all <- raw_data\$images / 255
-metadata <- as_tibble(raw_data\$metadata)
+x_all <- raw_data$images / 255
+metadata <- as_tibble(raw_data$metadata)
 ```
 
 ## Task 1: Exploratory Data Analysis & Visualisation Matrix
@@ -97,18 +97,18 @@ To test real-world generalization, we use an **out-of-session validation and tes
 #| label: data-split
 
 # Explicit session-out grouping enforces generalization across distinct recording iterations
-train_idx <- which(metadata\$session %in% c(1, 2, 3))
-val_idx   <- which(metadata\$session == 4)
-test_idx  <- which(metadata\$session == 5)
+train_idx <- which(metadata$session %in% c(1, 2, 3))
+val_idx   <- which(metadata$session == 4)
+test_idx  <- which(metadata$session == 5)
 
 x_train <- x_all[train_idx, , , , drop = FALSE]
 x_val   <- x_all[val_idx, , , , drop = FALSE]
 x_test  <- x_all[test_idx, , , , drop = FALSE]
 
 # 0-indexing conversion for sparse categorical cross-entropy optimization targets
-y_train_person <- as.integer(metadata\$person_id[train_idx] - 1L)
-y_val_person   <- as.integer(metadata\$person_id[val_idx] - 1L)
-y_test_person  <- as.integer(metadata\$person_id[test_idx] - 1L)
+y_train_person <- as.integer(metadata$person_id[train_idx] - 1L)
+y_val_person   <- as.integer(metadata$person_id[val_idx] - 1L)
+y_test_person  <- as.integer(metadata$person_id[test_idx] - 1L)
 
 # Cache tensor splits for synchronization across sub-group members
 saveRDS(list(x = x_train, y = y_train_person), "train_split.rds")
@@ -161,10 +161,15 @@ preds <- apply(probs, 1, function(x) which.max(x) - 1L)
 eval_df <- tibble(
   True_Writer = y_test_person + 1L,
   Pred_Writer = preds + 1L,
-  Digit       = metadata\$digit[test_idx]
+  Digit       = metadata$digit[test_idx]
 )
 
-overall_accuracy <- mean(eval_df\(True_Writer == eval_df\)Pred_Writer)
+overall_accuracy <- mean(
+  eval_df$True_Writer == eval_df$Pred_Writer
+)
+
+print(overall_accuracy)
+#overall_accuracy <- mean(eval_df(True_Writer == eval_df)Pred_Writer)
 ```
 
 ### Performance Breakdown by Digit Context
@@ -187,3 +192,29 @@ knitr::kable(digit_breakdown, digits = 4)
 
 saveRDS(eval_df, "cnn_predictions_output.rds")
 ```
+
+## comparison of  validation and test accuracy
+
+```{r}
+# CNN validation predictions: session 4
+val_probs <- predict(cnn_model, x_val, verbose = 0)
+val_preds <- apply(val_probs, 1, which.max)
+
+cnn_val_accuracy <- mean(
+  (val_preds - 1L) == y_val_person
+)
+
+# CNN test accuracy: session 5
+cnn_test_accuracy <- mean(
+  eval_df$True_Writer == eval_df$Pred_Writer
+)
+
+cnn_session_comparison <- tibble(
+  Dataset = c("Validation: Session 4", "Test: Session 5"),
+  Accuracy = c(cnn_val_accuracy, cnn_test_accuracy)
+)
+
+print(cnn_session_comparison)
+```
+
+# 
