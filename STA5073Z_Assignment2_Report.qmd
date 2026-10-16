@@ -55,6 +55,8 @@ x <- data$images / 255
 
 The pixel values were scaled to the interval [0,1] before fitting the neural networks.
 
+
+### Check data integrity
 ## Dataset structure
 
 ```{r}
@@ -153,13 +155,39 @@ The data are simulated and therefore cleaner and more controlled than handwritin
 
 # Train, validation and test strategy
 
-## CNN split by session
 
-For the CNN, Sessions 1–3 were used for training, Session 4 was used for validation and Session 5 was used for testing.
+## 2.1 CNN split by session
 
-**INSERT CODE CHUNK FOR SPLITTING OF CNN**
 
-This split evaluates whether the model can identify a known writer in a new recording session.
+```{r}
+split_cnn <- case_when(
+  meta$session %in% 1:3 ~ "train",
+  meta$session == 4     ~ "val",
+  TRUE                  ~ "test"
+)
+
+table(split_cnn, meta$person_id)
+
+idx <- lapply(
+  c(train = "train", val = "val", test = "test"),
+  function(s) which(split_cnn == s)
+)
+
+x_train <- x[idx$train, , , , drop = FALSE]
+y_train <- meta$person_id[idx$train] - 1L
+
+x_val <- x[idx$val, , , , drop = FALSE]
+y_val <- meta$person_id[idx$val] - 1L
+
+x_test <- x[idx$test, , , , drop = FALSE]
+y_test <- meta$person_id[idx$test] - 1L
+```
+The dataset was split by recording session rather than by writer. Sessions 1–3 were allocated to training, Session 4 to validation, and Session 5 to testing. This strategy was chosen because the objective is to evaluate whether the CNN can recognize the same 20 writers across different recording sessions. A writer-based split would instead assess generalization to writers whose handwriting was not represented during training, which is a different research question.
+The training set is used to learn writer-specific handwriting features from labelled images. The validation set contains images from Session 4 and is used to monitor learning and guide model selection, such as choosing hyperparameters or determining when to stop training. The test set contains images from Session 5 and is reserved for the final evaluation after model development is complete.
+This strategy evaluates within-writer, across-session generalization. The writer identities are shared across all three subsets, but the recording sessions are separated. Therefore, the evaluation assesses whether the model can identify known writers from a later session, rather than whether it can identify entirely unseen writers.
+Potential data leakage could arise if duplicate or highly similar images occur across sessions, or if data-dependent preprocessing uses information from the validation or test sets. Although the session-based split prevents images from the same session being distributed across different subsets, it does not guarantee complete independence between samples. To reduce these risks, image duplication should be checked, learned preprocessing parameters should be estimated from training data only, and Session 5 should not be used for model selection. Using test results repeatedly to modify the model could lead to overly optimistic estimates of generalization performance.
+
+
 
 ## Random-image baseline split
 
@@ -177,7 +205,378 @@ table(split_rand)
 prop.table(table(split_rand))
 ```
 
-The random-image split is included as a baseline. It mixes images from all sessions across train, validation and test subsets, which can result in a more optimistic performance estimate than the session-held-out split.
+A random-image split was considered as a baseline, allocating approximately 60% of images to training, 20% to validation, and 20% to testing. This approach allows each subset to potentially contain images from all writers and recording sessions, providing a baseline for comparison with the session-based split.
+However, because images are assigned independently, samples from the same writer and session may appear across all three subsets. If handwriting characteristics or image-generation patterns are shared across samples, this could produce optimistic performance estimates. Therefore, this strategy evaluates generalization to randomly held-out images rather than specifically to unseen recording sessions or unseen writers.
+
+#CNN writer identification and tuning
+
+## 3.1 CNN model builder
+
+```{r}
+build_cnn <- function(filters = 32,
+                      dense_units = 64,
+                      dropout = 0.3,
+                      lr = 1e-3) {
+
+  model <- keras_model_sequential(
+    input_shape = c(28, 28, 1)
+  ) |>
+    layer_conv_2d(
+      filters,
+      kernel_size = 3,
+      activation = "relu",
+      padding = "same"
+    ) |>
+    layer_max_pooling_2d(pool_size = 2) |>
+    layer_conv_2d(
+      filters * 2,
+      kernel_size = 3,
+      activation = "relu",
+      padding = "same"
+    ) |>
+    layer_max_pooling_2d(pool_size = 2) |>
+    layer_flatten() |>
+    layer_dropout(dropout) |>
+    layer_dense(dense_units, activation = "relu") |>
+    layer_dense(20, activation = "softmax")
+
+  model |> compile(
+    optimizer = optimizer_adam(learning_rate = lr),
+    loss = "sparse_categorical_crossentropy",
+    metrics = "accuracy"
+  )
+
+  model
+}
+```
+
+## 3.2 CNN Model 1: baseline
+
+```{r}
+set_random_seed(2026)
+
+cnn1 <- build_cnn(
+  filters = 32,
+  dense_units = 64,
+  dropout = 0.3,
+  lr = 1e-3
+)
+
+history1 <- cnn1 |> fit(
+  x_train, y_train,
+  epochs = 20,
+  batch_size = 64,
+  validation_data = list(x_val, y_val),
+  callbacks = list(
+    callback_early_stopping(
+      monitor = "val_loss",
+      patience = 3,
+      restore_best_weights = TRUE
+    )
+  )
+)
+
+plot(history1)
+```
+
+## 3.3 CNN Model 2: smaller dense layer and more dropout
+
+```{r}
+set_random_seed(2026)
+
+cnn2 <- build_cnn(
+  filters = 32,
+  dense_units = 32,
+  dropout = 0.5,
+  lr = 1e-3
+)
+
+history2 <- cnn2 |> fit(
+  x_train, y_train,
+  epochs = 20,
+  batch_size = 64,
+  validation_data = list(x_val, y_val),
+  callbacks = list(
+    callback_early_stopping(
+      monitor = "val_loss",
+      patience = 3,
+      restore_best_weights = TRUE
+    )
+  )
+)
+
+plot(history2)
+```
+
+## 3.4 CNN Model 3: lower learning rate
+
+```{r}
+set_random_seed(2026)
+
+cnn3 <- build_cnn(
+  filters = 32,
+  dense_units = 32,
+  dropout = 0.5,
+  lr = 1e-4
+)
+
+history3 <- cnn3 |> fit(
+  x_train, y_train,
+  epochs = 20,
+  batch_size = 64,
+  validation_data = list(x_val, y_val),
+  callbacks = list(
+    callback_early_stopping(
+      monitor = "val_loss",
+      patience = 3,
+      restore_best_weights = TRUE
+    )
+  )
+)
+
+plot(history3)
+```
+
+## 3.5 CNN Model 4: fewer convolutional filters
+
+```{r}
+set_random_seed(2026)
+
+cnn4 <- build_cnn(
+  filters = 16,
+  dense_units = 32,
+  dropout = 0.5,
+  lr = 1e-4
+)
+
+history4 <- cnn4 |> fit(
+  x_train, y_train,
+  epochs = 20,
+  batch_size = 64,
+  validation_data = list(x_val, y_val),
+  callbacks = list(
+    callback_early_stopping(
+      monitor = "val_loss",
+      patience = 3,
+      restore_best_weights = TRUE
+    )
+  )
+)
+
+plot(history4)
+```
+
+## 3.6 CNN tuning comparison
+
+```{r}
+#| label: tbl-cnn-tuning
+#| tbl-cap: "CNN Hyperparameter Tuning Results"
+
+library(knitr)
+cnn_tuning_results <- tibble(
+  model = c("Baseline", "Model 2", "Model 3", "Model 4"),
+  filters = c(32, 32, 32, 16),
+  dense_units = c(64, 32, 32, 32),
+  dropout = c(0.3, 0.5, 0.5, 0.5),
+  learning_rate = c(1e-3, 1e-3, 1e-4, 1e-4),
+
+  best_val_accuracy = c(
+    max(history1$metrics$val_accuracy),
+    max(history2$metrics$val_accuracy),
+    max(history3$metrics$val_accuracy),
+    max(history4$metrics$val_accuracy)
+  ),
+
+  min_val_loss = c(
+    min(history1$metrics$val_loss),
+    min(history2$metrics$val_loss),
+    min(history3$metrics$val_loss),
+    min(history4$metrics$val_loss)
+  ),
+
+  best_val_loss_epoch = c(
+    which.min(history1$metrics$val_loss),
+    which.min(history2$metrics$val_loss),
+    which.min(history3$metrics$val_loss),
+    which.min(history4$metrics$val_loss)
+  )
+)
+
+
+
+
+cnn_tuning_results %>%
+  select(
+    model,
+    filters,
+    dense_units,
+    dropout,
+    learning_rate,
+    best_val_accuracy,
+    min_val_loss,
+    best_val_loss_epoch
+  ) %>%
+  mutate(
+    best_val_accuracy = round(best_val_accuracy, 4),
+    min_val_loss = round(min_val_loss, 4)
+  ) %>%
+  kable(
+    caption = "CNN Hyperparameter Tuning Results",
+    col.names = c(
+      "Model",
+      "Filters",
+      "Dense Units",
+      "Dropout",
+      "Learning Rate",
+      "Best Validation Accuracy",
+      "Minimum Validation Loss",
+      "Best Loss Epoch"
+    ),
+    align = "lccccccc"
+  )
+```
+
+
+Hyperparameter tuning was conducted by comparing four CNN configurations as shown in @tbl-cnn-tuning above, a baseline model and three alternative models. The number of convolutional filters, dense units, dropout rate, and learning rate were varied to assess their effects on validation performance. Model 2 reduced the dense units from 64 to 32 and increased dropout from 0.3 to 0.5. Model 3 further reduced the learning rate from \(10^{-3}\) to \(10^{-4}\), while Model 4 also reduced the number of filters from 32 to 16. The models were evaluated using best validation accuracy and minimum validation loss.
+Model 3 performed best, achieving the highest validation accuracy of 61.00% and the lowest validation loss of 1.4424 among the four configurations. Its parameters were 32 filters, 32 dense units, a dropout rate of 0.5, and a learning rate of \(10^{-4}\). These results suggest that the lower learning rate improved performance for this configuration.
+
+
+###validation accuracy
+```{r}
+val_probs <- predict(cnn3, x_val, verbose = 0)
+
+val_pred <- max.col(val_probs) - 1L
+
+validation_accuracy <- mean(val_pred == y_val)
+
+cat("Validation Accuracy:", round(validation_accuracy * 100, 2), "%\n")
+```
+
+## 3.7 Final CNN test evaluation
+
+```{r}
+cnn_final <- cnn3
+
+probs <- predict(
+  cnn_final,
+  x_test,
+  verbose = 0
+)
+
+pred <- max.col(probs) - 1L
+
+res <- tibble(
+  truth = y_test,
+  pred = pred,
+  digit = meta$digit[idx$test],
+  correct = truth == pred
+)
+
+overall_accuracy <- mean(res$correct)
+cat("Test Accuracy:", round(overall_accuracy * 100, 2), "%\n")
+
+accuracy_by_digit <- res |>
+  group_by(digit) |>
+  summarise(
+    accuracy = mean(correct),
+    n = n()
+  )
+
+#print(accuracy_by_digit)
+
+accuracy_by_writer <- res |>
+  group_by(truth) |>
+  summarise(
+    accuracy = mean(correct),
+    n = n()
+  )
+
+#print(accuracy_by_writer)
+
+confusion_matrix <- table(
+  Actual = res$truth + 1L,
+  Predicted = res$pred + 1L
+)
+
+#confusion_matrix
+
+top3 <- apply(
+  probs,
+  1,
+  function(p) order(p, decreasing = TRUE)[1:3] - 1L
+)
+
+top3_accuracy <- mean(
+  sapply(
+    seq_along(y_test),
+    function(i) y_test[i] %in% top3[, i]
+  )
+)
+
+#top3_accuracy
+```
+
+##Performance Breakdown by Digit Context
+```{r}
+#| label: tbl-cnn-digit
+#| tbl-cap: "CNN Classification Accuracy by Digit"
+
+accuracy_by_digit |>
+  mutate(accuracy = round(accuracy, 4)) |>
+  knitr::kable(
+    col.names = c("Digit", "Accuracy", "Number of Images")
+  )
+```
+
+##accuracy by a writer
+```{r}
+#| label: tbl-cnn-writer
+#| tbl-cap: "CNN Classification Accuracy by Writer"
+
+accuracy_by_writer |>
+  mutate(accuracy = round(accuracy, 4)) |>
+  knitr::kable(
+    col.names = c("Actual Writer", "Accuracy", "Number of Images")
+  )
+```
+
+
+The selected CNN model was evaluated on the held-out test set to assess its ability to identify writers from their handwriting. The model achieved an overall classification accuracy of 55.1%, indicating that it correctly identified the writer in approximately half of the test images.
+
+As shown in @tbl-cnn-digit above, classification accuracy varied across the five digits. Digit 1 achieved the highest accuracy at 64.8%, followed by digit 2 at 56.1%, digit 4 at 54.4%, and digit 3 at 53.9%. Digit 0 had the lowest accuracy at 46.3%. These differences suggest that the usefulness of handwriting features for writer identification varied by digit, potentially because some digit shapes provided more distinctive writer-specific characteristics than others.
+
+Performance also varied substantially across individual writers, as shown in @tbl-cnn-writer. Writers 10 and 17 achieved 100% accuracy, while Writer 14 achieved 99.6% and Writer 5 achieved 89.6%. In contrast, Writers 4 and 12 had 0% accuracy, while Writers 19 and 9 achieved only 18.8% and 19.6%, respectively. This variation suggests that the model learned distinctive handwriting patterns for some writers more effectively than for others.
+
+The confusion matrix in @tbl-cnn-confusion provides further insight into these classification errors. The diagonal entries represent correctly classified images, while off-diagonal entries indicate cases where a writer was predicted as another writer. For example, Writer 11 was correctly classified in all 250 test images, whereas all 250 images belonging to Writer 5 were misclassified. Of these, 154 were predicted as Writer 13. Other notable confusion patterns included Writer 10 being predicted as Writer 2 in 200 cases and Writer 13 being predicted as Writer 8 in 82 cases. These patterns suggest that the model struggled to distinguish certain writers, potentially because their handwriting features were similar.
+
+```{r echo= false }
+#| label: tbl-cnn-confusion
+#| tbl-cap: "CNN Confusion Matrix on the Test Set"
+
+knitr::kable(confusion_matrix)
+```
+## 3.8 CNN accuracy by digit plot
+
+```{r}
+ggplot(
+  accuracy_by_digit,
+  aes(
+    x = factor(digit),
+    y = accuracy
+  )
+) +
+  geom_col() +
+  ylim(0, 1) +
+  labs(
+    x = "Digit",
+    y = "Writer identification accuracy",
+    title = "CNN Writer Identification Accuracy by Digit"
+  ) +
+  theme_minimal()
+```
+
+ 
+
 
 ## Siamese split by writer
 
