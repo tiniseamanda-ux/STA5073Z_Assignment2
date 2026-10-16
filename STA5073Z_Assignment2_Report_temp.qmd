@@ -16,7 +16,10 @@ format:
     theme: cosmo
     df-print: paged
 execute:
+<<<<<<< HEAD
   echo: false 
+=======
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
   warning: false
   message: false
   fig-align: center
@@ -45,6 +48,7 @@ The objectives were to investigate visual variation between writers, digits and 
 ```{r}
 library(tidyverse)
 library(keras3)
+<<<<<<< HEAD
 library(knitr)
 
 use_backend("tensorflow")
@@ -54,12 +58,22 @@ meta <- data$metadata
 images <- data$images / 255
 x <- data$images / 255
 metadata <- as_tibble(data$metadata)
+=======
+
+use_backend("tensorflow")
+set_random_seed(2026)
+
+data <- readRDS("handwriting.rds")
+meta <- data$metadata
+x <- data$images / 255
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 ```
 
 The pixel values were scaled to the interval [0,1] before fitting the neural networks.
 
 
 ### Check data integrity
+<<<<<<< HEAD
 
 ```{r}
 #| label: data-integrity
@@ -306,6 +320,110 @@ The data have important limitations. They are simulated rather than genuine hand
 
 ## 2.1 CNN split by session
 
+=======
+## Dataset structure
+
+```{r}
+dim(data$images)
+head(meta)
+
+table(meta$person_id)
+table(meta$digit)
+table(meta$session)
+```
+
+The dataset contains 20 writers, five digits, five recording sessions per writer, and 50 repetitions of each writer-digit-session combination. The design is therefore balanced.
+
+## Visual exploration
+
+```{r}
+plot_digit <- function(img, title = "") {
+  image(
+    t(apply(img, 2, rev)),
+    col = gray.colors(256),
+    axes = FALSE,
+    main = title
+  )
+}
+```
+
+### Same digit across different writers
+
+```{r}
+people <- 1:5
+par(mfrow = c(1, 5))
+
+for (p in people) {
+  idx_plot <- which(
+    meta$person_id == p &
+    meta$digit == 2 &
+    meta$session == 1
+  )[1]
+
+  plot_digit(
+    data$images[idx_plot, , , 1],
+    paste("Person", p)
+  )
+}
+```
+
+**Discussion:**  
+[Insert your visual observations here. Comment on stroke thickness, width, slant, curvature, positioning, and other writer-specific differences.]
+
+### Different digits from the same writer
+
+```{r}
+digits <- 0:4
+par(mfrow = c(1, 5))
+
+for (d in digits) {
+  idx_plot <- which(
+    meta$person_id == 3 &
+    meta$digit == d &
+    meta$session == 1
+  )[1]
+
+  plot_digit(
+    data$images[idx_plot, , , 1],
+    paste("Digit", d)
+  )
+}
+```
+
+### Same writer and digit across sessions
+
+```{r}
+sessions <- 1:5
+par(mfrow = c(1, 5))
+
+for (s in sessions) {
+  idx_plot <- which(
+    meta$person_id == 3 &
+    meta$digit == 2 &
+    meta$session == s
+  )[1]
+
+  plot_digit(
+    data$images[idx_plot, , , 1],
+    paste("Session", s)
+  )
+}
+```
+
+**Discussion:**  
+[Insert your observations about session-to-session variation here.]
+
+## Limitations of the simulated data
+
+The data are simulated and therefore cleaner and more controlled than handwriting collected in realistic conditions. Only 20 writers and five digits are represented. Real-world handwriting may also contain scanning artefacts, different pens and paper, varying resolution, incomplete strokes and background noise.
+
+# Train, validation and test strategy
+
+
+## 2.1 CNN split by session
+
+
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 ```{r}
 split_cnn <- case_when(
   meta$session %in% 1:3 ~ "train",
@@ -329,11 +447,16 @@ y_val <- meta$person_id[idx$val] - 1L
 x_test <- x[idx$test, , , , drop = FALSE]
 y_test <- meta$person_id[idx$test] - 1L
 ```
+<<<<<<< HEAD
 
 The dataset was split by recording session rather than by writer. Sessions 1–3 were allocated to training, Session 4 to validation, and Session 5 to testing. This strategy was chosen because the objective is to evaluate whether the CNN can recognize the same 20 writers across different recording sessions. A writer-based split would instead assess generalization to writers whose handwriting was not represented during training, which is a different research question.
 
 The training set is used to learn writer-specific handwriting features from labelled images. The validation set contains images from Session 4 and is used to monitor learning and guide model selection, such as choosing hyperparameters or determining when to stop training. The test set contains images from Session 5 and is reserved for the final evaluation after model development is complete.
 
+=======
+The dataset was split by recording session rather than by writer. Sessions 1–3 were allocated to training, Session 4 to validation, and Session 5 to testing. This strategy was chosen because the objective is to evaluate whether the CNN can recognize the same 20 writers across different recording sessions. A writer-based split would instead assess generalization to writers whose handwriting was not represented during training, which is a different research question.
+The training set is used to learn writer-specific handwriting features from labelled images. The validation set contains images from Session 4 and is used to monitor learning and guide model selection, such as choosing hyperparameters or determining when to stop training. The test set contains images from Session 5 and is reserved for the final evaluation after model development is complete.
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 This strategy evaluates within-writer, across-session generalization. The writer identities are shared across all three subsets, but the recording sessions are separated. Therefore, the evaluation assesses whether the model can identify known writers from a later session, rather than whether it can identify entirely unseen writers.
 Potential data leakage could arise if duplicate or highly similar images occur across sessions, or if data-dependent preprocessing uses information from the validation or test sets. Although the session-based split prevents images from the same session being distributed across different subsets, it does not guarantee complete independence between samples. To reduce these risks, image duplication should be checked, learned preprocessing parameters should be estimated from training data only, and Session 5 should not be used for model selection. Using test results repeatedly to modify the model could lead to overly optimistic estimates of generalization performance.
 
@@ -360,7 +483,11 @@ However, because images are assigned independently, samples from the same writer
 
 #CNN writer identification and tuning
 
+<<<<<<< HEAD
 ## CNN model builder
+=======
+## 3.1 CNN model builder
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 
 ```{r}
 build_cnn <- function(filters = 32,
@@ -400,7 +527,11 @@ build_cnn <- function(filters = 32,
 }
 ```
 
+<<<<<<< HEAD
 ## CNN Model 1: baseline
+=======
+## 3.2 CNN Model 1: baseline
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 
 ```{r}
 set_random_seed(2026)
@@ -429,7 +560,11 @@ history1 <- cnn1 |> fit(
 plot(history1)
 ```
 
+<<<<<<< HEAD
 ## CNN Model 2: smaller dense layer and more dropout
+=======
+## 3.3 CNN Model 2: smaller dense layer and more dropout
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 
 ```{r}
 set_random_seed(2026)
@@ -458,7 +593,11 @@ history2 <- cnn2 |> fit(
 plot(history2)
 ```
 
+<<<<<<< HEAD
 ## CNN Model 3: lower learning rate
+=======
+## 3.4 CNN Model 3: lower learning rate
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 
 ```{r}
 set_random_seed(2026)
@@ -487,7 +626,11 @@ history3 <- cnn3 |> fit(
 plot(history3)
 ```
 
+<<<<<<< HEAD
 ## CNN Model 4: fewer convolutional filters
+=======
+## 3.5 CNN Model 4: fewer convolutional filters
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 
 ```{r}
 set_random_seed(2026)
@@ -516,7 +659,11 @@ history4 <- cnn4 |> fit(
 plot(history4)
 ```
 
+<<<<<<< HEAD
 ## CNN tuning comparison
+=======
+## 3.6 CNN tuning comparison
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 
 ```{r}
 #| label: tbl-cnn-tuning
@@ -591,8 +738,12 @@ Hyperparameter tuning was conducted by comparing four CNN configurations as show
 Model 3 performed best, achieving the highest validation accuracy of 61.00% and the lowest validation loss of 1.4424 among the four configurations. Its parameters were 32 filters, 32 dense units, a dropout rate of 0.5, and a learning rate of \(10^{-4}\). These results suggest that the lower learning rate improved performance for this configuration.
 
 
+<<<<<<< HEAD
 ### Validation accuracy
 
+=======
+###validation accuracy
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 ```{r}
 val_probs <- predict(cnn3, x_val, verbose = 0)
 
@@ -603,7 +754,11 @@ validation_accuracy <- mean(val_pred == y_val)
 cat("Validation Accuracy:", round(validation_accuracy * 100, 2), "%\n")
 ```
 
+<<<<<<< HEAD
 ## Final CNN test evaluation
+=======
+## 3.7 Final CNN test evaluation
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 
 ```{r}
 cnn_final <- cnn3
@@ -667,8 +822,12 @@ top3_accuracy <- mean(
 #top3_accuracy
 ```
 
+<<<<<<< HEAD
 ## Performance Breakdown by Digit Context
 
+=======
+##Performance Breakdown by Digit Context
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 ```{r}
 #| label: tbl-cnn-digit
 #| tbl-cap: "CNN Classification Accuracy by Digit"
@@ -680,8 +839,12 @@ accuracy_by_digit |>
   )
 ```
 
+<<<<<<< HEAD
 ## Accuracy by a writer
 
+=======
+##accuracy by a writer
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 ```{r}
 #| label: tbl-cnn-writer
 #| tbl-cap: "CNN Classification Accuracy by Writer"
@@ -702,15 +865,23 @@ Performance also varied substantially across individual writers, as shown in @tb
 
 The confusion matrix in @tbl-cnn-confusion provides further insight into these classification errors. The diagonal entries represent correctly classified images, while off-diagonal entries indicate cases where a writer was predicted as another writer. For example, Writer 11 was correctly classified in all 250 test images, whereas all 250 images belonging to Writer 5 were misclassified. Of these, 154 were predicted as Writer 13. Other notable confusion patterns included Writer 10 being predicted as Writer 2 in 200 cases and Writer 13 being predicted as Writer 8 in 82 cases. These patterns suggest that the model struggled to distinguish certain writers, potentially because their handwriting features were similar.
 
+<<<<<<< HEAD
 ```{r}
 #| echo: false
+=======
+```{r echo= false }
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 #| label: tbl-cnn-confusion
 #| tbl-cap: "CNN Confusion Matrix on the Test Set"
 
 knitr::kable(confusion_matrix)
 ```
+<<<<<<< HEAD
 
 ##  CNN accuracy by digit plot
+=======
+## 3.8 CNN accuracy by digit plot
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 
 ```{r}
 ggplot(
@@ -730,6 +901,11 @@ ggplot(
   theme_minimal()
 ```
 
+<<<<<<< HEAD
+=======
+ 
+
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 # Task 3 and Task 5: Siamese network
 
 ##Siamese split by writer
@@ -1327,7 +1503,10 @@ best_val_score <- val_scores[[best_name]]
 The selected configuration is `r best_name`, with validation AUC `r round(max(validation_comparison$val_auc), 4)`. AUC measures ranking across possible thresholds; unlike test accuracy it does not depend on one chosen cutoff.Although Model 3 achieved the lowest validation loss, its AUC was lower than that of the Baseline, demonstrating that a lower contrastive loss does not necessarily correspond to better writer-verification performance. The small differences in AUC across the five models suggest limited sensitivity to the hyperparameter configurations tested. Therefore, the Baseline was selected for final evaluation. 
 
 # Saving the validation-selected model
+<<<<<<< HEAD
 
+=======
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 ```{r}
 
 # Save the selected Siamese model's trained weights
@@ -1440,7 +1619,10 @@ write.csv(
 )
 
 ```
+<<<<<<< HEAD
 
+=======
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
 The selected Baseline Siamese model was retrained using three random seeds to assess the stability of its validation performance. The model achieved a mean validation AUC of **0.9795**, with a standard deviation of **0.0042**, and individual AUC values ranging from **0.9748 to 0.9831**. These results indicate consistently strong discrimination between same-writer and different-writer pairs, with some sensitivity to training randomness. The original Baseline AUC of 0.9825 falls within this range. However, the variation across seeds is greater than the original AUC difference between the Baseline and Model 4 (0.0006), suggesting that the Baseline's small observed advantage may not be consistent across repeated runs.
 
 ```{r}
@@ -1649,6 +1831,7 @@ For the Siamese experiment, the 20 writers were split into 14 training writers, 
 
 The individual images can appear in more than one pair within a split, so pair observations are not statistically independent. Only three unseen test writers were evaluated, and the outcomes depend on the balanced, same-digit pair-generation procedure. A single writer partition and one random training seed per candidate also limit conclusions about the stability of model selection. Finally, the simulated images are not necessarily representative of real handwriting.
 
+<<<<<<< HEAD
 
 # Comparison of CNN and Siamese Network Performance
 
@@ -1699,3 +1882,5 @@ ChatGPT was also used for guidance on Git/GitHub workflows, including branches, 
 # Plagiarism declaration
 
 We declare that this report is our own work. All external sources have been appropriately acknowledged, and the use of generative AI tools has been disclosed in the AI Use Statement. All analyses and reported numerical results were produced from the supplied dataset using the code contained in our project repository. We understand the methods, code and interpretations presented in this report and are able to reproduce and explain them.
+=======
+>>>>>>> d49ff5982cfa1e021bb0b4100f31d955b1dce733
