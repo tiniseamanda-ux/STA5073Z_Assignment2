@@ -144,6 +144,13 @@ table(pairs$val$digit_a == pairs$val$digit_b)
 table(pairs$test$digit_a == pairs$test$digit_b)
 ```
 
+The Siamese network used a writer-independent splitting strategy, with writers divided into training, validation, and test groups using a fixed random seed (2026). Training, validation, and test pairs were generated separately from their respective writer groups, with 30,000, 6,000, and 6,000 pairs, respectively. This prevents writers from the training set appearing in the validation or test sets and allows model selection without using test data.
+
+This strategy evaluates writer-independent generalization, assessing whether the network can distinguish same-writer from different-writer pairs involving writers it did not encounter during training. Possible leakage could arise if writer identities overlap between splits, or if the same image is reused across different pairs in a way that compromises evaluation independence. Generating pairs separately within disjoint writer groups reduces these risks, although images may legitimately appear in multiple pairs within the same split. Optimistic performance could also result from selecting hyperparameters based on test results or from unbalanced or unrepresentative pairs. Therefore, writer separation should be verified, pair distributions should be checked, and the test set should remain reserved for final evaluation.
+
+
+
+
 ##Convert pair indices to model inputs
 ```{r}
 get_xy <- function(pr) {
