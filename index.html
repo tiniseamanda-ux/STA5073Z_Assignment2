@@ -1,16 +1,2409 @@
-
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>STA5073Z Assignment 2</title>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.25">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Amanda Tinise">
+<meta name="author" content="Sephetha Ngwana">
+<meta name="author" content="Motlatsi Seeko">
+<meta name="dcterms.date" content="2026-10-16">
+
+<title>Assignment 2: Image Classification with Neural Networks</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="STA5073Z_A2_Report_files/libs/clipboard/clipboard.min.js"></script>
+<script src="STA5073Z_A2_Report_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="STA5073Z_A2_Report_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="STA5073Z_A2_Report_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="STA5073Z_A2_Report_files/libs/quarto-html/popper.min.js"></script>
+<script src="STA5073Z_A2_Report_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="STA5073Z_A2_Report_files/libs/quarto-html/anchor.min.js"></script>
+<link href="STA5073Z_A2_Report_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="STA5073Z_A2_Report_files/libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="STA5073Z_A2_Report_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="STA5073Z_A2_Report_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="STA5073Z_A2_Report_files/libs/bootstrap/bootstrap-4d7f0bce1131f3e5f9547cd857cfbfc8.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="STA5073Z_A2_Report_files/libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet">
+
+<script src="STA5073Z_A2_Report_files/libs/pagedtable-1.1/js/pagedtable.js"></script>
+
+
+
 </head>
-<body>
-  <h1>STA5073Z Assignment 2</h1>
-  <h2>Handwriting Recognition Using Neural Networks</h2>
 
-  <p>This website presents our group project on
-  handwritten digit analysis, CNN writer identification,
-  and Siamese network writer verification.</p>
+<body class="quarto-light">
 
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction"><span class="header-section-number">1</span> Introduction</a></li>
+  <li><a href="#data-and-exploratory-analysis" id="toc-data-and-exploratory-analysis" class="nav-link" data-scroll-target="#data-and-exploratory-analysis"><span class="header-section-number">2</span> Data and exploratory analysis</a>
+  <ul class="collapse">
+  <li><a href="#data-loading-and-scaling" id="toc-data-loading-and-scaling" class="nav-link" data-scroll-target="#data-loading-and-scaling"><span class="header-section-number">2.1</span> Data loading and scaling</a>
+  <ul class="collapse">
+  <li><a href="#check-data-integrity" id="toc-check-data-integrity" class="nav-link" data-scroll-target="#check-data-integrity"><span class="header-section-number">2.1.1</span> Check data integrity</a></li>
+  <li><a href="#check-balance-across-writer-digit-and-session" id="toc-check-balance-across-writer-digit-and-session" class="nav-link" data-scroll-target="#check-balance-across-writer-digit-and-session"><span class="header-section-number">2.1.2</span> Check balance across writer, digit and session</a></li>
+  </ul></li>
+  <li><a href="#image-variation" id="toc-image-variation" class="nav-link" data-scroll-target="#image-variation"><span class="header-section-number">2.2</span> Image variation</a>
+  <ul class="collapse">
+  <li><a href="#plotting-helper" id="toc-plotting-helper" class="nav-link" data-scroll-target="#plotting-helper"><span class="header-section-number">2.2.1</span> Plotting helper</a></li>
+  <li><a href="#different-digits-from-different-writers" id="toc-different-digits-from-different-writers" class="nav-link" data-scroll-target="#different-digits-from-different-writers"><span class="header-section-number">2.2.2</span> Different digits from different writers</a></li>
+  <li><a href="#session-to-session-variation-within-each-writer" id="toc-session-to-session-variation-within-each-writer" class="nav-link" data-scroll-target="#session-to-session-variation-within-each-writer"><span class="header-section-number">2.2.3</span> Session-to-session variation within each writer</a></li>
+  <li><a href="#variation-among-replicates-from-one-session" id="toc-variation-among-replicates-from-one-session" class="nav-link" data-scroll-target="#variation-among-replicates-from-one-session"><span class="header-section-number">2.2.4</span> Variation among replicates from one session</a></li>
+  </ul></li>
+  <li><a href="#quantitative-description-of-image-variation" id="toc-quantitative-description-of-image-variation" class="nav-link" data-scroll-target="#quantitative-description-of-image-variation"><span class="header-section-number">2.3</span> Quantitative description of image variation</a>
+  <ul class="collapse">
+  <li><a href="#mean-ink-intensity-by-digit-and-session" id="toc-mean-ink-intensity-by-digit-and-session" class="nav-link" data-scroll-target="#mean-ink-intensity-by-digit-and-session"><span class="header-section-number">2.3.1</span> Mean ink intensity by digit and session</a></li>
+  <li><a href="#average-intensity-across-recording-sessions" id="toc-average-intensity-across-recording-sessions" class="nav-link" data-scroll-target="#average-intensity-across-recording-sessions"><span class="header-section-number">2.3.2</span> Average intensity across recording sessions</a></li>
+  </ul></li>
+  <li><a href="#discussion-and-implications" id="toc-discussion-and-implications" class="nav-link" data-scroll-target="#discussion-and-implications"><span class="header-section-number">2.4</span> Discussion and implications</a></li>
+  </ul></li>
+  <li><a href="#train-validation-and-test-strategy" id="toc-train-validation-and-test-strategy" class="nav-link" data-scroll-target="#train-validation-and-test-strategy"><span class="header-section-number">3</span> Train, validation and test strategy</a>
+  <ul class="collapse">
+  <li><a href="#cnn-split-by-session" id="toc-cnn-split-by-session" class="nav-link" data-scroll-target="#cnn-split-by-session"><span class="header-section-number">3.1</span> 2.1 CNN split by session</a></li>
+  <li><a href="#random-image-baseline-split" id="toc-random-image-baseline-split" class="nav-link" data-scroll-target="#random-image-baseline-split"><span class="header-section-number">3.2</span> Random-image baseline split</a></li>
+  <li><a href="#cnn-model-builder" id="toc-cnn-model-builder" class="nav-link" data-scroll-target="#cnn-model-builder"><span class="header-section-number">3.3</span> CNN model builder</a></li>
+  <li><a href="#cnn-model-1-baseline" id="toc-cnn-model-1-baseline" class="nav-link" data-scroll-target="#cnn-model-1-baseline"><span class="header-section-number">3.4</span> CNN Model 1: baseline</a></li>
+  <li><a href="#cnn-model-2-smaller-dense-layer-and-more-dropout" id="toc-cnn-model-2-smaller-dense-layer-and-more-dropout" class="nav-link" data-scroll-target="#cnn-model-2-smaller-dense-layer-and-more-dropout"><span class="header-section-number">3.5</span> CNN Model 2: smaller dense layer and more dropout</a></li>
+  <li><a href="#cnn-model-3-lower-learning-rate" id="toc-cnn-model-3-lower-learning-rate" class="nav-link" data-scroll-target="#cnn-model-3-lower-learning-rate"><span class="header-section-number">3.6</span> CNN Model 3: lower learning rate</a></li>
+  <li><a href="#cnn-model-4-fewer-convolutional-filters" id="toc-cnn-model-4-fewer-convolutional-filters" class="nav-link" data-scroll-target="#cnn-model-4-fewer-convolutional-filters"><span class="header-section-number">3.7</span> CNN Model 4: fewer convolutional filters</a></li>
+  <li><a href="#cnn-tuning-comparison" id="toc-cnn-tuning-comparison" class="nav-link" data-scroll-target="#cnn-tuning-comparison"><span class="header-section-number">3.8</span> CNN tuning comparison</a>
+  <ul class="collapse">
+  <li><a href="#validation-accuracy" id="toc-validation-accuracy" class="nav-link" data-scroll-target="#validation-accuracy"><span class="header-section-number">3.8.1</span> Validation accuracy</a></li>
+  </ul></li>
+  <li><a href="#final-cnn-test-evaluation" id="toc-final-cnn-test-evaluation" class="nav-link" data-scroll-target="#final-cnn-test-evaluation"><span class="header-section-number">3.9</span> Final CNN test evaluation</a></li>
+  <li><a href="#performance-breakdown-by-digit-context" id="toc-performance-breakdown-by-digit-context" class="nav-link" data-scroll-target="#performance-breakdown-by-digit-context"><span class="header-section-number">3.10</span> Performance Breakdown by Digit Context</a></li>
+  <li><a href="#accuracy-by-a-writer" id="toc-accuracy-by-a-writer" class="nav-link" data-scroll-target="#accuracy-by-a-writer"><span class="header-section-number">3.11</span> Accuracy by a writer</a></li>
+  <li><a href="#cnn-accuracy-by-digit-plot" id="toc-cnn-accuracy-by-digit-plot" class="nav-link" data-scroll-target="#cnn-accuracy-by-digit-plot"><span class="header-section-number">3.12</span> CNN accuracy by digit plot</a></li>
+  </ul></li>
+  <li><a href="#task-3-and-task-5-siamese-network" id="toc-task-3-and-task-5-siamese-network" class="nav-link" data-scroll-target="#task-3-and-task-5-siamese-network"><span class="header-section-number">4</span> Task 3 and Task 5: Siamese network</a>
+  <ul class="collapse">
+  <li><a href="#rows-in-each-writer-split" id="toc-rows-in-each-writer-split" class="nav-link" data-scroll-target="#rows-in-each-writer-split"><span class="header-section-number">4.1</span> 4.1 Rows in each writer split</a></li>
+  <li><a href="#pair-construction-function" id="toc-pair-construction-function" class="nav-link" data-scroll-target="#pair-construction-function"><span class="header-section-number">4.2</span> 4.2 Pair-construction function</a></li>
+  <li><a href="#create-train-validation-and-test-pairs" id="toc-create-train-validation-and-test-pairs" class="nav-link" data-scroll-target="#create-train-validation-and-test-pairs"><span class="header-section-number">4.3</span> 4.3 Create train, validation and test pairs</a></li>
+  <li><a href="#convert-pair-indices-to-model-inputs" id="toc-convert-pair-indices-to-model-inputs" class="nav-link" data-scroll-target="#convert-pair-indices-to-model-inputs"><span class="header-section-number">4.4</span> 4.4 Convert pair indices to model inputs</a>
+  <ul class="collapse">
+  <li><a href="#data-partitioning-strategy-generalisation-and-potential-leakage" id="toc-data-partitioning-strategy-generalisation-and-potential-leakage" class="nav-link" data-scroll-target="#data-partitioning-strategy-generalisation-and-potential-leakage"><span class="header-section-number">4.4.1</span> Data Partitioning Strategy, Generalisation and Potential Leakage</a></li>
+  </ul></li>
+  <li><a href="#encoder" id="toc-encoder" class="nav-link" data-scroll-target="#encoder"><span class="header-section-number">4.5</span> 4.5 Encoder</a></li>
+  <li><a href="#contrastive-loss" id="toc-contrastive-loss" class="nav-link" data-scroll-target="#contrastive-loss"><span class="header-section-number">4.6</span> 4.6 Contrastive loss</a></li>
+  <li><a href="#siamese-model-builder" id="toc-siamese-model-builder" class="nav-link" data-scroll-target="#siamese-model-builder"><span class="header-section-number">4.7</span> 4.7 Siamese model builder</a></li>
+  </ul></li>
+  <li><a href="#siamese-hyperparameter-models" id="toc-siamese-hyperparameter-models" class="nav-link" data-scroll-target="#siamese-hyperparameter-models"><span class="header-section-number">5</span> Siamese hyperparameter models</a>
+  <ul class="collapse">
+  <li><a href="#siamese-model-1-baseline" id="toc-siamese-model-1-baseline" class="nav-link" data-scroll-target="#siamese-model-1-baseline"><span class="header-section-number">5.1</span> 4.8 Siamese Model 1: baseline</a></li>
+  <li><a href="#siamese-model-2-more-dropout" id="toc-siamese-model-2-more-dropout" class="nav-link" data-scroll-target="#siamese-model-2-more-dropout"><span class="header-section-number">5.2</span> 4.9 Siamese Model 2: more dropout</a></li>
+  <li><a href="#siamese-model-3-smaller-embedding-and-lower-learning-rate" id="toc-siamese-model-3-smaller-embedding-and-lower-learning-rate" class="nav-link" data-scroll-target="#siamese-model-3-smaller-embedding-and-lower-learning-rate"><span class="header-section-number">5.3</span> 4.10 Siamese Model 3: smaller embedding and lower learning rate</a></li>
+  <li><a href="#siamese-model-4-larger-embedding-and-lower-learning-rate" id="toc-siamese-model-4-larger-embedding-and-lower-learning-rate" class="nav-link" data-scroll-target="#siamese-model-4-larger-embedding-and-lower-learning-rate"><span class="header-section-number">5.4</span> 4.11 Siamese Model 4: larger embedding and lower learning rate</a></li>
+  <li><a href="#siamese-model-5-smaller-embedding-with-original-learning-rate" id="toc-siamese-model-5-smaller-embedding-with-original-learning-rate" class="nav-link" data-scroll-target="#siamese-model-5-smaller-embedding-with-original-learning-rate"><span class="header-section-number">5.5</span> 4.12 Siamese Model 5: smaller embedding with original learning rate</a></li>
+  <li><a href="#siamese-tuning-comparison" id="toc-siamese-tuning-comparison" class="nav-link" data-scroll-target="#siamese-tuning-comparison"><span class="header-section-number">5.6</span> 4.13 Siamese tuning comparison</a></li>
+  </ul></li>
+  <li><a href="#reproducibility-saving-important-objects" id="toc-reproducibility-saving-important-objects" class="nav-link" data-scroll-target="#reproducibility-saving-important-objects"><span class="header-section-number">6</span> Reproducibility: saving important objects</a></li>
+  <li><a href="#siamese-model-selection-and-final-evaluation" id="toc-siamese-model-selection-and-final-evaluation" class="nav-link" data-scroll-target="#siamese-model-selection-and-final-evaluation"><span class="header-section-number">7</span> Siamese model selection and final evaluation</a>
+  <ul class="collapse">
+  <li><a href="#validation-auc-and-model-selection" id="toc-validation-auc-and-model-selection" class="nav-link" data-scroll-target="#validation-auc-and-model-selection"><span class="header-section-number">7.1</span> Validation AUC and model selection</a></li>
+  </ul></li>
+  <li><a href="#saving-the-validation-selected-model" id="toc-saving-the-validation-selected-model" class="nav-link" data-scroll-target="#saving-the-validation-selected-model"><span class="header-section-number">8</span> Saving the validation-selected model</a></li>
+  <li><a href="#robustness-analysis-repeat-the-best-siamese-model-with-3-seeds" id="toc-robustness-analysis-repeat-the-best-siamese-model-with-3-seeds" class="nav-link" data-scroll-target="#robustness-analysis-repeat-the-best-siamese-model-with-3-seeds"><span class="header-section-number">9</span> Robustness analysis: repeat the best Siamese model with 3 seeds</a>
+  <ul class="collapse">
+  <li><a href="#select-a-matching-threshold-using-validation-pairs" id="toc-select-a-matching-threshold-using-validation-pairs" class="nav-link" data-scroll-target="#select-a-matching-threshold-using-validation-pairs"><span class="header-section-number">9.1</span> Select a matching threshold using validation pairs</a></li>
+  <li><a href="#held-out-test-matching-performance" id="toc-held-out-test-matching-performance" class="nav-link" data-scroll-target="#held-out-test-matching-performance"><span class="header-section-number">9.2</span> Held-out test matching performance</a></li>
+  <li><a href="#roc-curve-and-embedding-distance-distributions" id="toc-roc-curve-and-embedding-distance-distributions" class="nav-link" data-scroll-target="#roc-curve-and-embedding-distance-distributions"><span class="header-section-number">9.3</span> ROC curve and embedding-distance distributions</a></li>
+  <li><a href="#matching-results-by-digit-and-session" id="toc-matching-results-by-digit-and-session" class="nav-link" data-scroll-target="#matching-results-by-digit-and-session"><span class="header-section-number">9.4</span> Matching results by digit and session</a></li>
+  <li><a href="#generalisation-possible-leakage-and-limitations" id="toc-generalisation-possible-leakage-and-limitations" class="nav-link" data-scroll-target="#generalisation-possible-leakage-and-limitations"><span class="header-section-number">9.5</span> Generalisation, possible leakage, and limitations</a></li>
+  </ul></li>
+  <li><a href="#comparison-of-cnn-and-siamese-network-performance" id="toc-comparison-of-cnn-and-siamese-network-performance" class="nav-link" data-scroll-target="#comparison-of-cnn-and-siamese-network-performance"><span class="header-section-number">10</span> Comparison of CNN and Siamese Network Performance</a>
+  <ul class="collapse">
+  <li><a href="#overall-model-performance" id="toc-overall-model-performance" class="nav-link" data-scroll-target="#overall-model-performance"><span class="header-section-number">10.0.1</span> Overall Model Performance</a></li>
+  <li><a href="#performance-across-digits" id="toc-performance-across-digits" class="nav-link" data-scroll-target="#performance-across-digits"><span class="header-section-number">10.0.2</span> Performance Across Digits</a></li>
+  <li><a href="#generalisation-across-writers-and-recording-sessions" id="toc-generalisation-across-writers-and-recording-sessions" class="nav-link" data-scroll-target="#generalisation-across-writers-and-recording-sessions"><span class="header-section-number">10.0.3</span> Generalisation Across Writers and Recording Sessions</a></li>
+  <li><a href="#overall-interpretation" id="toc-overall-interpretation" class="nav-link" data-scroll-target="#overall-interpretation"><span class="header-section-number">10.0.4</span> Overall Interpretation</a></li>
+  </ul></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion"><span class="header-section-number">11</span> Conclusion</a></li>
+  <li><a href="#ai-use-statement" id="toc-ai-use-statement" class="nav-link" data-scroll-target="#ai-use-statement"><span class="header-section-number">12</span> AI use statement</a></li>
+  <li><a href="#plagiarism-declaration" id="toc-plagiarism-declaration" class="nav-link" data-scroll-target="#plagiarism-declaration"><span class="header-section-number">13</span> Plagiarism declaration</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Assignment 2: Image Classification with Neural Networks</h1>
+<p class="subtitle lead">STA5073Z – Data Science for Industry 2026</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Authors</div>
+    <div class="quarto-title-meta-contents">
+             <p>Amanda Tinise </p>
+             <p>Sephetha Ngwana </p>
+             <p>Motlatsi Seeko </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">16 October 2026</p>
+    </div>
+  </div>
   
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Introduction</h1>
+<p>This project investigates writer information in a simulated handwritten-digit dataset using two neural-network approaches. The first approach uses a convolutional neural network (CNN) to directly predict the identity of the writer. The second uses a Siamese neural network to determine whether two handwriting samples were produced by the same person.</p>
+<p>The dataset contains 25,000 images of handwritten digits generated by 20 writers. Each writer completed five independent recording sessions and produced 50 examples of each digit from 0 to 4 in each session. The images have dimensions 28 × 28 pixels. The handwriting is simulated and writing style varies both within and between sessions.</p>
+<p>The objectives were to investigate visual variation between writers, digits and sessions, build a CNN for writer identification, construct a Siamese network for same-writer verification, justify train, validation and test splits, conduct limited hyperparameter optimisation, and compare the two approaches.</p>
+</section>
+<section id="data-and-exploratory-analysis" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Data and exploratory analysis</h1>
+<section id="data-loading-and-scaling" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="data-loading-and-scaling"><span class="header-section-number">2.1</span> Data loading and scaling</h2>
+<p>The pixel values were scaled to the interval [0,1] before fitting the neural networks.</p>
+<section id="check-data-integrity" class="level3" data-number="2.1.1">
+<h3 data-number="2.1.1" class="anchored" data-anchor-id="check-data-integrity"><span class="header-section-number">2.1.1</span> Check data integrity</h3>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Table 1. Data structure and integrity checks.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Measure</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Images</td>
+<td style="text-align: right;">25000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Height</td>
+<td style="text-align: right;">28</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Width</td>
+<td style="text-align: right;">28</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Writers</td>
+<td style="text-align: right;">20</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Digits</td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sessions</td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Replicates per writer–digit–session (expected)</td>
+<td style="text-align: right;">50</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Missing metadata values</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The data contain <strong>25,000 images</strong> from <strong>20 writers</strong>, covering <strong>5 digits</strong> across <strong>5 sessions</strong>. Image intensities were scaled from 0–255 to 0–1 for consistent display and later model use. The checks above confirm that the metadata aligns row-by-row with the image array and that required metadata fields are present.</p>
+</section>
+<section id="check-balance-across-writer-digit-and-session" class="level3" data-number="2.1.2">
+<h3 data-number="2.1.2" class="anchored" data-anchor-id="check-balance-across-writer-digit-and-session"><span class="header-section-number">2.1.2</span> Check balance across writer, digit and session</h3>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Table 2. Image counts per writer–digit–session combination.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">Combinations</th>
+<th style="text-align: right;">Minimum</th>
+<th style="text-align: right;">Maximum</th>
+<th style="text-align: right;">Mean</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">500</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">50</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>There are <strong>500 observed writer–digit–session combinations</strong>, with <strong>50–50 images per combination</strong>. This confirms the balanced 20 × 5 × 5 × 50 design described in the assignment. This matters because class imbalance would otherwise complicate comparisons of classification accuracy across writers and digits.</p>
+</section>
+</section>
+<section id="image-variation" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="image-variation"><span class="header-section-number">2.2</span> Image variation</h2>
+<section id="plotting-helper" class="level3" data-number="2.2.1">
+<h3 data-number="2.2.1" class="anchored" data-anchor-id="plotting-helper"><span class="header-section-number">2.2.1</span> Plotting helper</h3>
+<p>The same plotting function is used throughout to make figures directly comparable. The image’s <strong>column</strong> is mapped to the horizontal axis and its <strong>row</strong> to the reversed vertical axis, avoiding an accidental transpose.</p>
+</section>
+<section id="different-digits-from-different-writers" class="level3" data-number="2.2.2">
+<h3 data-number="2.2.2" class="anchored" data-anchor-id="different-digits-from-different-writers"><span class="header-section-number">2.2.2</span> Different digits from different writers</h3>
+<p>To examine digit form and writer differences together, we show one sample of every digit for writers 1, 5 and 10. The session and replicate are held fixed so that the selection is deliberate, rather than mixing different recording conditions.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-writers-digits" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-writers-digits-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="STA5073Z_A2_Report_files/figure-html/fig-writers-digits-1.png" class="img-fluid figure-img" width="960">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-writers-digits-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Figure 1. Digits 0–4 written by three writers in Session 1 (Replicate 1). Rows identify writers; columns identify digits.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Figure 1 illustrates visible differences in handwriting styles across the three writers. For example, <strong>Writer 10’s digit 0 is more slanted and elongated</strong>, whereas Writers 1 and 5 produce more upright, rounded forms. Additionally, <strong>Writer 5’s digit 1 has a noticeably curved upper stroke</strong>, while Writer 1’s version is comparatively straight and vertical. These differences suggest that individual writing styles may provide useful features for distinguishing writers, even when the same digit is written.</p>
+</section>
+<section id="session-to-session-variation-within-each-writer" class="level3" data-number="2.2.3">
+<h3 data-number="2.2.3" class="anchored" data-anchor-id="session-to-session-variation-within-each-writer"><span class="header-section-number">2.2.3</span> Session-to-session variation within each writer</h3>
+<p>We now hold the digit (2) and replicate index (1) fixed, while comparing Sessions 1, 3 and 5 for the same three writers. The replicate index is a selection rule, <strong>not</strong> a paired measurement of an identical handwriting instance across sessions.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-writers-sessions" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-writers-sessions-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="STA5073Z_A2_Report_files/figure-html/fig-writers-sessions-1.png" class="img-fluid figure-img" width="768">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-writers-sessions-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Figure 2. Digit 2 across Sessions 1, 3 and 5 for writers 1, 5 and 10 (Replicate 1).
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>This figure is designed to reveal whether the <em>appearance</em> of one digit remains visually consistent across recording sessions for the same writer. Any observed differences might reflect session-level changes or ordinary example-to-example variation; with one image per cell, these cannot be cleanly separated.Figure 2 shows that the handwritten digit 2 remains relatively consistent for each writer across Sessions 1, 3 and 5, although some variation is visible. For example, Writer 1 maintains a similar curved upper stroke and diagonal lower stroke across all three sessions, while the length and placement of the horizontal base vary slightly. Writer 5 shows more noticeable variation in the curvature and shape of the lower stroke, particularly in Session 3. These observations suggest that writer-specific handwriting characteristics may persist across recording sessions, despite some natural variation. This supports evaluating the CNN on a held-out session to assess its ability to recognise known writers under different recording conditions.</p>
+</section>
+<section id="variation-among-replicates-from-one-session" class="level3" data-number="2.2.4">
+<h3 data-number="2.2.4" class="anchored" data-anchor-id="variation-among-replicates-from-one-session"><span class="header-section-number">2.2.4</span> Variation among replicates from one session</h3>
+<p>To inspect repeated samples under fixed recording conditions, we show Replicates 1–5 of digit 2 written by Writer 5 in Session 1.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-replicates" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-replicates-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="STA5073Z_A2_Report_files/figure-html/fig-replicates-1.png" class="img-fluid figure-img" width="960">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-replicates-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Figure 3. Five digit-2 replicates from Writer 5, Session 1.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Any differences among these images occur even when writer, digit and session are fixed. This illustrates why writer recognition is not simply exact-image matching. Figure 3 shows that Writer 5 maintains a relatively consistent style when writing digit 2 across five replicates within the same recording session. All five examples have a similar curved upper stroke, diagonal middle stroke and horizontal base. However, slight differences are visible in the curvature of the upper stroke, the angle of the diagonal stroke and the length of the horizontal base. This indicates that some handwriting variation occurs even when the writer, digit and recording session remain unchanged.</p>
+</section>
+</section>
+<section id="quantitative-description-of-image-variation" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="quantitative-description-of-image-variation"><span class="header-section-number">2.3</span> Quantitative description of image variation</h2>
+<section id="mean-ink-intensity-by-digit-and-session" class="level3" data-number="2.3.1">
+<h3 data-number="2.3.1" class="anchored" data-anchor-id="mean-ink-intensity-by-digit-and-session"><span class="header-section-number">2.3.1</span> Mean ink intensity by digit and session</h3>
+<p>Visual examples are useful but selective. To complement them, we calculate the mean normalised pixel intensity in each image. This measures average image darkness and <strong>is not a direct measure of handwriting style or discriminative information</strong>.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Table 3. Mean normalised pixel intensity by digit.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">digit</th>
+<th style="text-align: right;">images</th>
+<th style="text-align: right;">mean_intensity</th>
+<th style="text-align: right;">sd_intensity</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">0.1080</td>
+<td style="text-align: right;">0.0095</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">0.0850</td>
+<td style="text-align: right;">0.0089</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">0.1019</td>
+<td style="text-align: right;">0.0092</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">0.0991</td>
+<td style="text-align: right;">0.0099</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">0.0986</td>
+<td style="text-align: right;">0.0084</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-ink-distribution" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ink-distribution-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="STA5073Z_A2_Report_files/figure-html/fig-ink-distribution-1.png" class="img-fluid figure-img" width="768">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ink-distribution-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Figure 4. Distribution of mean image pixel intensity for each digit, pooled across writers and sessions.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Results.</strong> Across the dataset, mean image intensity is highest for digit <strong>0</strong> (0.1080) and lowest for digit <strong>1</strong> (0.0850). These differences describe pixel coverage/darkness, not how accurately writer identity can be inferred. Session-related variation can be examined separately below.</p>
+</section>
+<section id="average-intensity-across-recording-sessions" class="level3" data-number="2.3.2">
+<h3 data-number="2.3.2" class="anchored" data-anchor-id="average-intensity-across-recording-sessions"><span class="header-section-number">2.3.2</span> Average intensity across recording sessions</h3>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Table 4. Mean image intensity by recording session.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">session</th>
+<th style="text-align: right;">images</th>
+<th style="text-align: right;">mean_intensity</th>
+<th style="text-align: right;">sd_intensity</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">0.0980</td>
+<td style="text-align: right;">0.0123</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">0.0980</td>
+<td style="text-align: right;">0.0115</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">0.0986</td>
+<td style="text-align: right;">0.0118</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">0.0991</td>
+<td style="text-align: right;">0.0118</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">0.0989</td>
+<td style="text-align: right;">0.0122</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Across the five sessions, average image intensity ranges from <strong>0.0980</strong> to <strong>0.0991</strong>. Session-level differences in this summary, if present, are descriptive: averaging does not establish that the cause is a change in writing conditions, and the same numerical mean can arise from different image shapes.</p>
+</section>
+</section>
+<section id="discussion-and-implications" class="level2" data-number="2.4">
+<h2 data-number="2.4" class="anchored" data-anchor-id="discussion-and-implications"><span class="header-section-number">2.4</span> Discussion and implications</h2>
+<p>The dataset is organised around three distinct sources of potentially relevant variation: <strong>writer identity</strong>, <strong>digit identity</strong>, and <strong>recording session</strong>, with additional variation among repeated images. The figures intentionally compare a small, controlled set of examples; the intensity summaries describe all images without identifying stylistic features. Together, these analyses justify asking whether writer-identification performance differs by digit and whether it generalises to samples from recording sessions absent during training.</p>
+<p>The data have important limitations. They are simulated rather than genuine handwriting, they contain only digits 0–4 and a fixed set of 20 writers and selected image panels cannot establish population-wide patterns.</p>
+</section>
+</section>
+<section id="train-validation-and-test-strategy" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Train, validation and test strategy</h1>
+<section id="cnn-split-by-session" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="cnn-split-by-session"><span class="header-section-number">3.1</span> 2.1 CNN split by session</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>         
+split_cnn   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17
+    test  250 250 250 250 250 250 250 250 250 250 250 250 250 250 250 250 250
+    train 750 750 750 750 750 750 750 750 750 750 750 750 750 750 750 750 750
+    val   250 250 250 250 250 250 250 250 250 250 250 250 250 250 250 250 250
+         
+split_cnn  18  19  20
+    test  250 250 250
+    train 750 750 750
+    val   250 250 250</code></pre>
+</div>
+</div>
+<p>The dataset was split by recording session rather than by writer. Sessions 1–3 were allocated to training, Session 4 to validation, and Session 5 to testing. This strategy was chosen because the objective is to evaluate whether the CNN can recognize the same 20 writers across different recording sessions. A writer-based split would instead assess generalization to writers whose handwriting was not represented during training, which is a different research question.</p>
+<p>The training set is used to learn writer-specific handwriting features from labelled images. The validation set contains images from Session 4 and is used to monitor learning and guide model selection, such as choosing hyperparameters or determining when to stop training. The test set contains images from Session 5 and is reserved for the final evaluation after model development is complete.</p>
+<p>This strategy evaluates within-writer, across-session generalization. The writer identities are shared across all three subsets, but the recording sessions are separated. Therefore, the evaluation assesses whether the model can identify known writers from a later session, rather than whether it can identify entirely unseen writers. Potential data leakage could arise if duplicate or highly similar images occur across sessions, or if data-dependent preprocessing uses information from the validation or test sets. Although the session-based split prevents images from the same session being distributed across different subsets, it does not guarantee complete independence between samples. To reduce these risks, image duplication should be checked, learned preprocessing parameters should be estimated from training data only, and Session 5 should not be used for model selection. Using test results repeatedly to modify the model could lead to overly optimistic estimates of generalization performance.</p>
+</section>
+<section id="random-image-baseline-split" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="random-image-baseline-split"><span class="header-section-number">3.2</span> Random-image baseline split</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>split_rand
+ test train   val 
+ 4916 15016  5068 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>split_rand
+   test   train     val 
+0.19664 0.60064 0.20272 </code></pre>
+</div>
+</div>
+<p>A random-image split was considered as a baseline, allocating approximately 60% of images to training, 20% to validation, and 20% to testing. This approach allows each subset to potentially contain images from all writers and recording sessions, providing a baseline for comparison with the session-based split. However, because images are assigned independently, samples from the same writer and session may appear across all three subsets. If handwriting characteristics or image-generation patterns are shared across samples, this could produce optimistic performance estimates. Therefore, this strategy evaluates generalization to randomly held-out images rather than specifically to unseen recording sessions or unseen writers.</p>
+<p>#CNN writer identification and tuning</p>
+</section>
+<section id="cnn-model-builder" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="cnn-model-builder"><span class="header-section-number">3.3</span> CNN model builder</h2>
+</section>
+<section id="cnn-model-1-baseline" class="level2" data-number="3.4">
+<h2 data-number="3.4" class="anchored" data-anchor-id="cnn-model-1-baseline"><span class="header-section-number">3.4</span> CNN Model 1: baseline</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Epoch 1/20
+235/235 - 15s - 66ms/step - accuracy: 0.7141 - loss: 0.8932 - val_accuracy: 0.5618 - val_loss: 2.0738
+Epoch 2/20
+235/235 - 19s - 82ms/step - accuracy: 0.9629 - loss: 0.1127 - val_accuracy: 0.5518 - val_loss: 2.6851
+Epoch 3/20
+235/235 - 8s - 34ms/step - accuracy: 0.9817 - loss: 0.0597 - val_accuracy: 0.5444 - val_loss: 2.8290
+Epoch 4/20
+235/235 - 8s - 35ms/step - accuracy: 0.9887 - loss: 0.0355 - val_accuracy: 0.5706 - val_loss: 3.3912</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="STA5073Z_A2_Report_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="cnn-model-2-smaller-dense-layer-and-more-dropout" class="level2" data-number="3.5">
+<h2 data-number="3.5" class="anchored" data-anchor-id="cnn-model-2-smaller-dense-layer-and-more-dropout"><span class="header-section-number">3.5</span> CNN Model 2: smaller dense layer and more dropout</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Epoch 1/20
+235/235 - 13s - 54ms/step - accuracy: 0.6113 - loss: 1.2001 - val_accuracy: 0.5808 - val_loss: 1.8030
+Epoch 2/20
+235/235 - 11s - 45ms/step - accuracy: 0.9243 - loss: 0.2145 - val_accuracy: 0.5810 - val_loss: 2.2900
+Epoch 3/20
+235/235 - 18s - 76ms/step - accuracy: 0.9600 - loss: 0.1147 - val_accuracy: 0.5588 - val_loss: 2.4663
+Epoch 4/20
+235/235 - 9s - 38ms/step - accuracy: 0.9743 - loss: 0.0743 - val_accuracy: 0.5528 - val_loss: 2.6570</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="STA5073Z_A2_Report_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="cnn-model-3-lower-learning-rate" class="level2" data-number="3.6">
+<h2 data-number="3.6" class="anchored" data-anchor-id="cnn-model-3-lower-learning-rate"><span class="header-section-number">3.6</span> CNN Model 3: lower learning rate</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Epoch 1/20
+235/235 - 14s - 59ms/step - accuracy: 0.1843 - loss: 2.7338 - val_accuracy: 0.2870 - val_loss: 2.2965
+Epoch 2/20
+235/235 - 8s - 35ms/step - accuracy: 0.4812 - loss: 1.6342 - val_accuracy: 0.4446 - val_loss: 1.6033
+Epoch 3/20
+235/235 - 8s - 34ms/step - accuracy: 0.6503 - loss: 1.0162 - val_accuracy: 0.5342 - val_loss: 1.4439
+Epoch 4/20
+235/235 - 10s - 44ms/step - accuracy: 0.7392 - loss: 0.7319 - val_accuracy: 0.5678 - val_loss: 1.4502
+Epoch 5/20
+235/235 - 8s - 33ms/step - accuracy: 0.8001 - loss: 0.5677 - val_accuracy: 0.5844 - val_loss: 1.4664
+Epoch 6/20
+235/235 - 11s - 47ms/step - accuracy: 0.8331 - loss: 0.4602 - val_accuracy: 0.6100 - val_loss: 1.5257</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="STA5073Z_A2_Report_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="cnn-model-4-fewer-convolutional-filters" class="level2" data-number="3.7">
+<h2 data-number="3.7" class="anchored" data-anchor-id="cnn-model-4-fewer-convolutional-filters"><span class="header-section-number">3.7</span> CNN Model 4: fewer convolutional filters</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Epoch 1/20
+235/235 - 7s - 30ms/step - accuracy: 0.0954 - loss: 2.9372 - val_accuracy: 0.2080 - val_loss: 2.7950
+Epoch 2/20
+235/235 - 5s - 19ms/step - accuracy: 0.2640 - loss: 2.4088 - val_accuracy: 0.3184 - val_loss: 2.1097
+Epoch 3/20
+235/235 - 4s - 15ms/step - accuracy: 0.4337 - loss: 1.7107 - val_accuracy: 0.4134 - val_loss: 1.7401
+Epoch 4/20
+235/235 - 6s - 24ms/step - accuracy: 0.5513 - loss: 1.2936 - val_accuracy: 0.4630 - val_loss: 1.5759
+Epoch 5/20
+235/235 - 7s - 30ms/step - accuracy: 0.6330 - loss: 1.0375 - val_accuracy: 0.5118 - val_loss: 1.4916
+Epoch 6/20
+235/235 - 7s - 30ms/step - accuracy: 0.6889 - loss: 0.8725 - val_accuracy: 0.5364 - val_loss: 1.4758
+Epoch 7/20
+235/235 - 8s - 35ms/step - accuracy: 0.7268 - loss: 0.7542 - val_accuracy: 0.5558 - val_loss: 1.4887
+Epoch 8/20
+235/235 - 5s - 20ms/step - accuracy: 0.7716 - loss: 0.6410 - val_accuracy: 0.5602 - val_loss: 1.5110
+Epoch 9/20
+235/235 - 4s - 17ms/step - accuracy: 0.7953 - loss: 0.5655 - val_accuracy: 0.5756 - val_loss: 1.5427</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="STA5073Z_A2_Report_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="cnn-tuning-comparison" class="level2" data-number="3.8">
+<h2 data-number="3.8" class="anchored" data-anchor-id="cnn-tuning-comparison"><span class="header-section-number">3.8</span> CNN tuning comparison</h2>
+<div class="cell">
+<div id="tbl-cnn-tuning" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-cnn-tuning-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1: CNN Hyperparameter Tuning Results
+</figcaption>
+<div aria-describedby="tbl-cnn-tuning-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<caption>CNN Hyperparameter Tuning Results</caption>
+<colgroup>
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 10%">
+<col style="width: 7%">
+<col style="width: 12%">
+<col style="width: 21%">
+<col style="width: 20%">
+<col style="width: 13%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Model</th>
+<th style="text-align: center;">Filters</th>
+<th style="text-align: center;">Dense Units</th>
+<th style="text-align: center;">Dropout</th>
+<th style="text-align: center;">Learning Rate</th>
+<th style="text-align: center;">Best Validation Accuracy</th>
+<th style="text-align: center;">Minimum Validation Loss</th>
+<th style="text-align: center;">Best Loss Epoch</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Baseline</td>
+<td style="text-align: center;">32</td>
+<td style="text-align: center;">64</td>
+<td style="text-align: center;">0.3</td>
+<td style="text-align: center;">1e-03</td>
+<td style="text-align: center;">0.5706</td>
+<td style="text-align: center;">2.0738</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Model 2</td>
+<td style="text-align: center;">32</td>
+<td style="text-align: center;">32</td>
+<td style="text-align: center;">0.5</td>
+<td style="text-align: center;">1e-03</td>
+<td style="text-align: center;">0.5810</td>
+<td style="text-align: center;">1.8030</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Model 3</td>
+<td style="text-align: center;">32</td>
+<td style="text-align: center;">32</td>
+<td style="text-align: center;">0.5</td>
+<td style="text-align: center;">1e-04</td>
+<td style="text-align: center;">0.6100</td>
+<td style="text-align: center;">1.4439</td>
+<td style="text-align: center;">3</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Model 4</td>
+<td style="text-align: center;">16</td>
+<td style="text-align: center;">32</td>
+<td style="text-align: center;">0.5</td>
+<td style="text-align: center;">1e-04</td>
+<td style="text-align: center;">0.5756</td>
+<td style="text-align: center;">1.4758</td>
+<td style="text-align: center;">6</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>Hyperparameter tuning was conducted by comparing four CNN configurations as shown in <a href="#tbl-cnn-tuning" class="quarto-xref">Table&nbsp;1</a> above, a baseline model and three alternative models. The number of convolutional filters, dense units, dropout rate, and learning rate were varied to assess their effects on validation performance. Model 2 reduced the dense units from 64 to 32 and increased dropout from 0.3 to 0.5. Model 3 further reduced the learning rate from (10^{-3}) to (10^{-4}), while Model 4 also reduced the number of filters from 32 to 16. The models were evaluated using best validation accuracy and minimum validation loss. Model 3 performed best, achieving the highest validation accuracy of 61.00% and the lowest validation loss of 1.4424 among the four configurations. Its parameters were 32 filters, 32 dense units, a dropout rate of 0.5, and a learning rate of (10^{-4}). These results suggest that the lower learning rate improved performance for this configuration.</p>
+<section id="validation-accuracy" class="level3" data-number="3.8.1">
+<h3 data-number="3.8.1" class="anchored" data-anchor-id="validation-accuracy"><span class="header-section-number">3.8.1</span> Validation accuracy</h3>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Validation Accuracy: 53.42 %</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="final-cnn-test-evaluation" class="level2" data-number="3.9">
+<h2 data-number="3.9" class="anchored" data-anchor-id="final-cnn-test-evaluation"><span class="header-section-number">3.9</span> Final CNN test evaluation</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Test Accuracy: 54.74 %</code></pre>
+</div>
+</div>
+</section>
+<section id="performance-breakdown-by-digit-context" class="level2" data-number="3.10">
+<h2 data-number="3.10" class="anchored" data-anchor-id="performance-breakdown-by-digit-context"><span class="header-section-number">3.10</span> Performance Breakdown by Digit Context</h2>
+<div class="cell">
+<div id="tbl-cnn-digit" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-cnn-digit-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: CNN Classification Accuracy by Digit
+</figcaption>
+<div aria-describedby="tbl-cnn-digit-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: right;">Digit</th>
+<th style="text-align: right;">Accuracy</th>
+<th style="text-align: right;">Number of Images</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.452</td>
+<td style="text-align: right;">1000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.641</td>
+<td style="text-align: right;">1000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.558</td>
+<td style="text-align: right;">1000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.534</td>
+<td style="text-align: right;">1000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0.552</td>
+<td style="text-align: right;">1000</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+</section>
+<section id="accuracy-by-a-writer" class="level2" data-number="3.11">
+<h2 data-number="3.11" class="anchored" data-anchor-id="accuracy-by-a-writer"><span class="header-section-number">3.11</span> Accuracy by a writer</h2>
+<div class="cell">
+<div id="tbl-cnn-writer" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-cnn-writer-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;3: CNN Classification Accuracy by Writer
+</figcaption>
+<div aria-describedby="tbl-cnn-writer-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: right;">Actual Writer</th>
+<th style="text-align: right;">Accuracy</th>
+<th style="text-align: right;">Number of Images</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.252</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.688</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.616</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.236</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0.876</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0.744</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">0.524</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">0.776</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0.196</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">0.660</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">0.460</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">0.996</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">15</td>
+<td style="text-align: right;">0.516</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">16</td>
+<td style="text-align: right;">0.736</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">17</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">18</td>
+<td style="text-align: right;">0.456</td>
+<td style="text-align: right;">250</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">19</td>
+<td style="text-align: right;">0.216</td>
+<td style="text-align: right;">250</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>The selected CNN model was evaluated on the held-out test set to assess its ability to identify writers from their handwriting. The model achieved an overall classification accuracy of 55.1%, indicating that it correctly identified the writer in approximately half of the test images.</p>
+<p>As shown in <a href="#tbl-cnn-digit" class="quarto-xref">Table&nbsp;2</a> above, classification accuracy varied across the five digits. Digit 1 achieved the highest accuracy at 64.8%, followed by digit 2 at 56.1%, digit 4 at 54.4%, and digit 3 at 53.9%. Digit 0 had the lowest accuracy at 46.3%. These differences suggest that the usefulness of handwriting features for writer identification varied by digit, potentially because some digit shapes provided more distinctive writer-specific characteristics than others.</p>
+<p>Performance also varied substantially across individual writers, as shown in <a href="#tbl-cnn-writer" class="quarto-xref">Table&nbsp;3</a>. Writers 10 and 17 achieved 100% accuracy, while Writer 14 achieved 99.6% and Writer 5 achieved 89.6%. In contrast, Writers 4 and 12 had 0% accuracy, while Writers 19 and 9 achieved only 18.8% and 19.6%, respectively. This variation suggests that the model learned distinctive handwriting patterns for some writers more effectively than for others.</p>
+<p>The confusion matrix in <a href="#tbl-cnn-confusion" class="quarto-xref">Table&nbsp;4</a> provides further insight into these classification errors. The diagonal entries represent correctly classified images, while off-diagonal entries indicate cases where a writer was predicted as another writer. For example, Writer 11 was correctly classified in all 250 test images, whereas all 250 images belonging to Writer 5 were misclassified. Of these, 154 were predicted as Writer 13. Other notable confusion patterns included Writer 10 being predicted as Writer 2 in 200 cases and Writer 13 being predicted as Writer 8 in 82 cases. These patterns suggest that the model struggled to distinguish certain writers, potentially because their handwriting features were similar.</p>
+<div class="cell">
+<div id="tbl-cnn-confusion" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-cnn-confusion-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;4: CNN Confusion Matrix on the Test Set
+</figcaption>
+<div aria-describedby="tbl-cnn-confusion-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 3%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 3%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 3%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;">1</th>
+<th style="text-align: right;">2</th>
+<th style="text-align: right;">3</th>
+<th style="text-align: right;">4</th>
+<th style="text-align: right;">5</th>
+<th style="text-align: right;">6</th>
+<th style="text-align: right;">7</th>
+<th style="text-align: right;">8</th>
+<th style="text-align: right;">9</th>
+<th style="text-align: right;">10</th>
+<th style="text-align: right;">11</th>
+<th style="text-align: right;">12</th>
+<th style="text-align: right;">13</th>
+<th style="text-align: right;">14</th>
+<th style="text-align: right;">15</th>
+<th style="text-align: right;">16</th>
+<th style="text-align: right;">17</th>
+<th style="text-align: right;">18</th>
+<th style="text-align: right;">19</th>
+<th style="text-align: right;">20</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">63</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">31</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">53</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">50</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">172</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">28</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">154</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">83</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">59</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">56</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">36</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: right;">49</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">29</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">155</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">219</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">31</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">39</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">186</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">119</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">131</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">194</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">56</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">199</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">49</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">250</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">35</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">165</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">40</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">55</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">80</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">24</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">48</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">115</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">85</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">249</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">66</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">129</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">66</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">184</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">250</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">86</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">41</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">114</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">125</td>
+<td style="text-align: right;">61</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">54</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</figure>
+</div>
+</div>
+</section>
+<section id="cnn-accuracy-by-digit-plot" class="level2" data-number="3.12">
+<h2 data-number="3.12" class="anchored" data-anchor-id="cnn-accuracy-by-digit-plot"><span class="header-section-number">3.12</span> CNN accuracy by digit plot</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="STA5073Z_A2_Report_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="task-3-and-task-5-siamese-network" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Task 3 and Task 5: Siamese network</h1>
+<p>##Siamese split by writer</p>
+<section id="rows-in-each-writer-split" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="rows-in-each-writer-split"><span class="header-section-number">4.1</span> 4.1 Rows in each writer split</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 17500</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3750</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3750</code></pre>
+</div>
+</div>
+</section>
+<section id="pair-construction-function" class="level2" data-number="4.2">
+<h2 data-number="4.2" class="anchored" data-anchor-id="pair-construction-function"><span class="header-section-number">4.2</span> 4.2 Pair-construction function</h2>
+</section>
+<section id="create-train-validation-and-test-pairs" class="level2" data-number="4.3">
+<h2 data-number="4.3" class="anchored" data-anchor-id="create-train-validation-and-test-pairs"><span class="header-section-number">4.3</span> 4.3 Create train, validation and test pairs</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    0     1 
+15000 15000 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+   0    1 
+3000 3000 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+   0    1 
+3000 3000 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ TRUE 
+30000 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+TRUE 
+6000 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+TRUE 
+6000 </code></pre>
+</div>
+</div>
+</section>
+<section id="convert-pair-indices-to-model-inputs" class="level2" data-number="4.4">
+<h2 data-number="4.4" class="anchored" data-anchor-id="convert-pair-indices-to-model-inputs"><span class="header-section-number">4.4</span> 4.4 Convert pair indices to model inputs</h2>
+<section id="data-partitioning-strategy-generalisation-and-potential-leakage" class="level3" data-number="4.4.1">
+<h3 data-number="4.4.1" class="anchored" data-anchor-id="data-partitioning-strategy-generalisation-and-potential-leakage"><span class="header-section-number">4.4.1</span> Data Partitioning Strategy, Generalisation and Potential Leakage</h3>
+<p><strong>Data Partitioning Strategy</strong></p>
+<p>The dataset was partitioned at the writer level, with 14 writers (70%) allocated to training, three (15%) to validation and three (15%) to testing. This writer-disjoint strategy ensures that no individual writer appears in more than one subset. Training pairs were used to learn handwriting similarities, validation pairs were used for hyperparameter optimisation and threshold selection, and test pairs were reserved for final model evaluation.</p>
+<p>Positive pairs consisted of two images from the same writer, while negative pairs contained images from different writers. Pair construction was restricted to images representing the same digit to prevent differences in digit identity from influencing writer verification. A balanced distribution of positive and negative pairs was maintained, with 30,000 training pairs, 6,000 validation pairs and 6,000 test pairs.</p>
+<p><strong>Generalisation and Potential Data Leakage</strong></p>
+<p>Unlike the CNN, which identifies known writers in a new recording session, the Siamese network evaluates whether two handwriting samples belong to the same person when the writers were not encountered during training. This assesses the model’s ability to generalise its learned similarity representations to previously unseen writers.</p>
+<p>Splitting writers before constructing image pairs reduces the risk of data leakage, as handwriting samples from training writers cannot appear in the validation or test sets. Furthermore, selecting hyperparameters and the matching threshold using validation data prevents the test set from influencing model selection, reducing the risk of overly optimistic performance estimates.</p>
+<p>Individual images may be reused across multiple pairs within the same subset, meaning that pair observations are not statistically independent. Also, the test set contains only three unseen writers, limiting the generalisability of the results. Since pairs were balanced and restricted to matching digits, the reported performance may also differ under real-world conditions with different writer populations, digit combinations and matching frequencies.</p>
+<p>The writer-disjoint strategy provides a good evaluation of the Siamese network’s ability to verify previously unseen writers while minimising leakage between the training, validation and test sets.</p>
+</section>
+</section>
+<section id="encoder" class="level2" data-number="4.5">
+<h2 data-number="4.5" class="anchored" data-anchor-id="encoder"><span class="header-section-number">4.5</span> 4.5 Encoder</h2>
+</section>
+<section id="contrastive-loss" class="level2" data-number="4.6">
+<h2 data-number="4.6" class="anchored" data-anchor-id="contrastive-loss"><span class="header-section-number">4.6</span> 4.6 Contrastive loss</h2>
+</section>
+<section id="siamese-model-builder" class="level2" data-number="4.7">
+<h2 data-number="4.7" class="anchored" data-anchor-id="siamese-model-builder"><span class="header-section-number">4.7</span> 4.7 Siamese model builder</h2>
+</section>
+</section>
+<section id="siamese-hyperparameter-models" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Siamese hyperparameter models</h1>
+<section id="siamese-model-1-baseline" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="siamese-model-1-baseline"><span class="header-section-number">5.1</span> 4.8 Siamese Model 1: baseline</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Epoch 1/20
+235/235 - 39s - 168ms/step - loss: 0.0920 - val_loss: 0.0789
+Epoch 2/20
+235/235 - 50s - 211ms/step - loss: 0.0559 - val_loss: 0.0808
+Epoch 3/20
+235/235 - 31s - 132ms/step - loss: 0.0461 - val_loss: 0.0889
+Epoch 4/20
+235/235 - 28s - 120ms/step - loss: 0.0408 - val_loss: 0.0960</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="STA5073Z_A2_Report_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="siamese-model-2-more-dropout" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="siamese-model-2-more-dropout"><span class="header-section-number">5.2</span> 4.9 Siamese Model 2: more dropout</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Epoch 1/20
+235/235 - 38s - 162ms/step - loss: 0.1265 - val_loss: 0.0795
+Epoch 2/20
+235/235 - 35s - 148ms/step - loss: 0.0847 - val_loss: 0.0757
+Epoch 3/20
+235/235 - 41s - 174ms/step - loss: 0.0734 - val_loss: 0.0805
+Epoch 4/20
+235/235 - 28s - 119ms/step - loss: 0.0675 - val_loss: 0.0776
+Epoch 5/20
+235/235 - 46s - 194ms/step - loss: 0.0636 - val_loss: 0.0814</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="STA5073Z_A2_Report_files/figure-html/unnamed-chunk-21-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="siamese-model-3-smaller-embedding-and-lower-learning-rate" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="siamese-model-3-smaller-embedding-and-lower-learning-rate"><span class="header-section-number">5.3</span> 4.10 Siamese Model 3: smaller embedding and lower learning rate</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Epoch 1/20
+235/235 - 31s - 131ms/step - loss: 0.1963 - val_loss: 0.1116
+Epoch 2/20
+235/235 - 31s - 134ms/step - loss: 0.1449 - val_loss: 0.0885
+Epoch 3/20
+235/235 - 46s - 195ms/step - loss: 0.1269 - val_loss: 0.0823
+Epoch 4/20
+235/235 - 38s - 160ms/step - loss: 0.1148 - val_loss: 0.0788
+Epoch 5/20
+235/235 - 29s - 125ms/step - loss: 0.1065 - val_loss: 0.0774
+Epoch 6/20
+235/235 - 33s - 140ms/step - loss: 0.1002 - val_loss: 0.0760
+Epoch 7/20
+235/235 - 28s - 119ms/step - loss: 0.0954 - val_loss: 0.0764
+Epoch 8/20
+235/235 - 41s - 176ms/step - loss: 0.0913 - val_loss: 0.0752
+Epoch 9/20
+235/235 - 41s - 176ms/step - loss: 0.0878 - val_loss: 0.0751
+Epoch 10/20
+235/235 - 42s - 181ms/step - loss: 0.0842 - val_loss: 0.0755
+Epoch 11/20
+235/235 - 49s - 207ms/step - loss: 0.0813 - val_loss: 0.0748
+Epoch 12/20
+235/235 - 41s - 174ms/step - loss: 0.0790 - val_loss: 0.0748
+Epoch 13/20
+235/235 - 39s - 166ms/step - loss: 0.0771 - val_loss: 0.0750
+Epoch 14/20
+235/235 - 33s - 140ms/step - loss: 0.0747 - val_loss: 0.0758</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="STA5073Z_A2_Report_files/figure-html/unnamed-chunk-22-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="siamese-model-4-larger-embedding-and-lower-learning-rate" class="level2" data-number="5.4">
+<h2 data-number="5.4" class="anchored" data-anchor-id="siamese-model-4-larger-embedding-and-lower-learning-rate"><span class="header-section-number">5.4</span> 4.11 Siamese Model 4: larger embedding and lower learning rate</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Epoch 1/20
+235/235 - 41s - 173ms/step - loss: 0.2005 - val_loss: 0.1234
+Epoch 2/20
+235/235 - 38s - 160ms/step - loss: 0.1485 - val_loss: 0.0902
+Epoch 3/20
+235/235 - 28s - 119ms/step - loss: 0.1291 - val_loss: 0.0840
+Epoch 4/20
+235/235 - 24s - 101ms/step - loss: 0.1162 - val_loss: 0.0794
+Epoch 5/20
+235/235 - 24s - 100ms/step - loss: 0.1069 - val_loss: 0.0787
+Epoch 6/20
+235/235 - 24s - 103ms/step - loss: 0.1006 - val_loss: 0.0771
+Epoch 7/20
+235/235 - 26s - 111ms/step - loss: 0.0953 - val_loss: 0.0770
+Epoch 8/20
+235/235 - 24s - 101ms/step - loss: 0.0907 - val_loss: 0.0757
+Epoch 9/20
+235/235 - 41s - 172ms/step - loss: 0.0868 - val_loss: 0.0749
+Epoch 10/20
+235/235 - 24s - 100ms/step - loss: 0.0837 - val_loss: 0.0758
+Epoch 11/20
+235/235 - 23s - 99ms/step - loss: 0.0803 - val_loss: 0.0761
+Epoch 12/20
+235/235 - 24s - 103ms/step - loss: 0.0775 - val_loss: 0.0760</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="STA5073Z_A2_Report_files/figure-html/unnamed-chunk-23-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="siamese-model-5-smaller-embedding-with-original-learning-rate" class="level2" data-number="5.5">
+<h2 data-number="5.5" class="anchored" data-anchor-id="siamese-model-5-smaller-embedding-with-original-learning-rate"><span class="header-section-number">5.5</span> 4.12 Siamese Model 5: smaller embedding with original learning rate</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Epoch 1/20
+235/235 - 32s - 134ms/step - loss: 0.1252 - val_loss: 0.0797
+Epoch 2/20
+235/235 - 27s - 113ms/step - loss: 0.0858 - val_loss: 0.0768
+Epoch 3/20
+235/235 - 38s - 161ms/step - loss: 0.0743 - val_loss: 0.0780
+Epoch 4/20
+235/235 - 22s - 94ms/step - loss: 0.0683 - val_loss: 0.0809
+Epoch 5/20
+235/235 - 22s - 94ms/step - loss: 0.0641 - val_loss: 0.0790</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="STA5073Z_A2_Report_files/figure-html/unnamed-chunk-24-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The training and validation loss curves for the five Siamese models were used to assess learning behaviour, convergence and potential overfitting. Comparing these curves helped identify configurations with lower validation loss and evaluate whether training remained stable. Model 3 achieved the lowest minimum validation loss (0.0748), followed by Model 4 (0.0749). However, the Baseline achieved the highest validation AUC (0.9825), demonstrating that lower validation loss does not necessarily translate into better writer-verification performance. Therefore, the loss curves were used as supporting diagnostic evidence, while <strong>validation AUC was the primary criterion for selecting the Baseline model</strong> for final evaluation.</p>
+</section>
+<section id="siamese-tuning-comparison" class="level2" data-number="5.6">
+<h2 data-number="5.6" class="anchored" data-anchor-id="siamese-tuning-comparison"><span class="header-section-number">5.6</span> 4.13 Siamese tuning comparison</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div data-pagedtable="false">
+  <script data-pagedtable-source="" type="application/json">
+{"columns":[{"label":["model"],"name":[1],"type":["chr"],"align":["left"]},{"label":["embedding"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["filters"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["dropout"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["margin"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["learning_rate"],"name":[6],"type":["dbl"],"align":["right"]},{"label":["min_val_loss"],"name":[7],"type":["dbl"],"align":["right"]},{"label":["best_val_loss_epoch"],"name":[8],"type":["int"],"align":["right"]}],"data":[{"1":"Baseline","2":"32","3":"32","4":"0.2","5":"1","6":"1e-03","7":"0.07891968","8":"1"},{"1":"Model 2","2":"32","3":"32","4":"0.5","5":"1","6":"1e-03","7":"0.07572208","8":"2"},{"1":"Model 3","2":"16","3":"32","4":"0.5","5":"1","6":"1e-04","7":"0.07481302","8":"11"},{"1":"Model 4","2":"32","3":"32","4":"0.5","5":"1","6":"1e-04","7":"0.07490639","8":"9"},{"1":"Model 5","2":"16","3":"32","4":"0.5","5":"1","6":"1e-03","7":"0.07684182","8":"2"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="reproducibility-saving-important-objects" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Reproducibility: saving important objects</h1>
+</section>
+<section id="siamese-model-selection-and-final-evaluation" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> Siamese model selection and final evaluation</h1>
+<p>The five candidate models above are compared using <strong>validation ROC AUC</strong>, because the practical task is to discriminate same-writer from different-writer pairs. Contrastive loss is useful for fitting the embeddings, but loss values alone need not rank verification performance consistently. Smaller embedding distances indicate stronger evidence of a match. The test data are held out until <strong>both the model and decision threshold</strong> have been selected from validation data.</p>
+<section id="validation-auc-and-model-selection" class="level2" data-number="7.1">
+<h2 data-number="7.1" class="anchored" data-anchor-id="validation-auc-and-model-selection"><span class="header-section-number">7.1</span> Validation AUC and model selection</h2>
+<div class="cell" data-tbl-cap="Validation discrimination for the five Siamese candidate models.">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Validation discrimination for the five Siamese candidate models.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">model</th>
+<th style="text-align: right;">val_auc</th>
+<th style="text-align: right;">min_val_loss</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Baseline</td>
+<td style="text-align: right;">0.9825</td>
+<td style="text-align: right;">0.0789</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Model 4</td>
+<td style="text-align: right;">0.9819</td>
+<td style="text-align: right;">0.0749</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Model 2</td>
+<td style="text-align: right;">0.9811</td>
+<td style="text-align: right;">0.0757</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Model 3</td>
+<td style="text-align: right;">0.9804</td>
+<td style="text-align: right;">0.0748</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Model 5</td>
+<td style="text-align: right;">0.9793</td>
+<td style="text-align: right;">0.0768</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The selected configuration is Baseline, with validation AUC 0.9825. AUC measures ranking across possible thresholds; unlike test accuracy it does not depend on one chosen cutoff.Although Model 3 achieved the lowest validation loss, its AUC was lower than that of the Baseline, demonstrating that a lower contrastive loss does not necessarily correspond to better writer-verification performance. The small differences in AUC across the five models suggest limited sensitivity to the hyperparameter configurations tested. Therefore, the Baseline was selected for final evaluation.</p>
+</section>
+</section>
+<section id="saving-the-validation-selected-model" class="level1" data-number="8">
+<h1 data-number="8"><span class="header-section-number">8</span> Saving the validation-selected model</h1>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Saved weights for: Baseline </code></pre>
+</div>
+</div>
+</section>
+<section id="robustness-analysis-repeat-the-best-siamese-model-with-3-seeds" class="level1" data-number="9">
+<h1 data-number="9"><span class="header-section-number">9</span> Robustness analysis: repeat the best Siamese model with 3 seeds</h1>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>  Seed Validation_AUC
+1  101      0.9748454
+2  202      0.9807324
+3  303      0.9830583</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Mean_AUC      SD_AUC Minimum_AUC Maximum_AUC
+1 0.9795454 0.004233164   0.9748454   0.9830583</code></pre>
+</div>
+</div>
+<p>The selected Baseline Siamese model was retrained using three random seeds to assess the stability of its validation performance. The model achieved a mean validation AUC of <strong>0.9795</strong>, with a standard deviation of <strong>0.0042</strong>, and individual AUC values ranging from <strong>0.9748 to 0.9831</strong>. These results indicate consistently strong discrimination between same-writer and different-writer pairs, with some sensitivity to training randomness. The original Baseline AUC of 0.9825 falls within this range. However, the variation across seeds is greater than the original AUC difference between the Baseline and Model 4 (0.0006), suggesting that the Baseline’s small observed advantage may not be consistent across repeated runs.</p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Restored model: Baseline </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Maximum prediction difference: 0 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Model restored successfully.</code></pre>
+</div>
+</div>
+<section id="select-a-matching-threshold-using-validation-pairs" class="level2" data-number="9.1">
+<h2 data-number="9.1" class="anchored" data-anchor-id="select-a-matching-threshold-using-validation-pairs"><span class="header-section-number">9.1</span> Select a matching threshold using validation pairs</h2>
+<p>To turn distances into same/different decisions, we choose a threshold using <strong>only validation pairs</strong>. Here the threshold maximises balanced accuracy (mean sensitivity and specificity); the same cutoff is applied unchanged to the test data.</p>
+<div class="cell" data-tbl-cap="Validation performance at the selected matching threshold.">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Validation performance at the selected matching threshold.</caption>
+<colgroup>
+<col style="width: 20%">
+<col style="width: 24%">
+<col style="width: 15%">
+<col style="width: 15%">
+<col style="width: 23%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;">score_threshold</th>
+<th style="text-align: right;">distance_threshold</th>
+<th style="text-align: right;">sensitivity</th>
+<th style="text-align: right;">specificity</th>
+<th style="text-align: right;">balanced_accuracy</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">-0.5343</td>
+<td style="text-align: right;">0.5343</td>
+<td style="text-align: right;">0.91</td>
+<td style="text-align: right;">0.953</td>
+<td style="text-align: right;">0.9315</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="held-out-test-matching-performance" class="level2" data-number="9.2">
+<h2 data-number="9.2" class="anchored" data-anchor-id="held-out-test-matching-performance"><span class="header-section-number">9.2</span> Held-out test matching performance</h2>
+<div class="cell" data-tbl-cap="Final Siamese verification performance on three previously unseen writers.">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Final Siamese verification performance on three previously unseen writers.</caption>
+<colgroup>
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 15%">
+<col style="width: 15%">
+<col style="width: 24%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">model</th>
+<th style="text-align: right;">test_auc</th>
+<th style="text-align: right;">test_eer</th>
+<th style="text-align: right;">accuracy</th>
+<th style="text-align: right;">sensitivity</th>
+<th style="text-align: right;">specificity</th>
+<th style="text-align: right;">distance_threshold</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Baseline</td>
+<td style="text-align: right;">0.9361</td>
+<td style="text-align: right;">0.1433</td>
+<td style="text-align: right;">0.8557</td>
+<td style="text-align: right;">0.8737</td>
+<td style="text-align: right;">0.8377</td>
+<td style="text-align: right;">0.5343</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>On held-out writers, the chosen model obtained ROC AUC 0.9361 and approximate EER 0.1433. At the <strong>validation-selected</strong> threshold, sensitivity was 0.8737 (same-writer pairs correctly matched) and specificity was 0.8377 (different-writer pairs correctly rejected).</p>
+</section>
+<section id="roc-curve-and-embedding-distance-distributions" class="level2" data-number="9.3">
+<h2 data-number="9.3" class="anchored" data-anchor-id="roc-curve-and-embedding-distance-distributions"><span class="header-section-number">9.3</span> ROC curve and embedding-distance distributions</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-siamese-roc" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-siamese-roc-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="STA5073Z_A2_Report_files/figure-html/fig-siamese-roc-1.png" class="img-fluid figure-img" width="576">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-siamese-roc-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Held-out test ROC curve for writer verification.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The ROC curve illustrates the Siamese network’s ability to distinguish same-writer from different-writer pairs across different classification thresholds. The curve’s position towards the upper-left corner indicates strong discrimination, with high sensitivity and relatively low false positive rates. This suggests that the model learned useful handwriting representations for verifying previously unseen writers.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-siamese-test-distances" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-siamese-test-distances-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="STA5073Z_A2_Report_files/figure-html/fig-siamese-test-distances-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-siamese-test-distances-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Held-out test distance distributions for same- and different-writer pairs.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The embedding-distance distributions illustrate how the Siamese network distinguishes same-writer from different-writer pairs. Same-writer pairs generally have smaller distances, while different-writer pairs have larger distances. The dashed line represents the matching threshold selected using validation data, with pairs to the left classified as same-writer. The overlap between the distributions indicates that some pairs may be incorrectly classified, showing that the model does not achieve perfect separation.</p>
+</section>
+<section id="matching-results-by-digit-and-session" class="level2" data-number="9.4">
+<h2 data-number="9.4" class="anchored" data-anchor-id="matching-results-by-digit-and-session"><span class="header-section-number">9.4</span> Matching results by digit and session</h2>
+<p>All pairs in this experiment were generated with <code>same_digit = TRUE</code>, so this is <strong>same-digit verification</strong>, not a test of matching two different digits. Accuracy by digit is therefore conditional on the particular threshold and test-pair sampling.</p>
+<div class="cell" data-tbl-cap="Held-out Siamese matching accuracy by digit.">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Held-out Siamese matching accuracy by digit.</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">digit_a</th>
+<th style="text-align: right;">n_pairs</th>
+<th style="text-align: right;">accuracy</th>
+<th style="text-align: right;">auc</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1211</td>
+<td style="text-align: right;">0.9257</td>
+<td style="text-align: right;">0.9866</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1221</td>
+<td style="text-align: right;">0.8460</td>
+<td style="text-align: right;">0.8965</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1162</td>
+<td style="text-align: right;">0.8804</td>
+<td style="text-align: right;">0.9752</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1192</td>
+<td style="text-align: right;">0.8935</td>
+<td style="text-align: right;">0.9663</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">1214</td>
+<td style="text-align: right;">0.7348</td>
+<td style="text-align: right;">0.8766</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The Siamese network’s matching performance varied across handwritten digits. <strong>Digit 0 achieved the highest AUC (0.9866) and accuracy (92.57%)</strong>, indicating the strongest writer discrimination among the five digits. <strong>Digit 4 had the lowest AUC (0.8766) and accuracy (73.48%)</strong>, suggesting greater difficulty distinguishing writers using this digit. Digit 1 also showed relatively lower performance (AUC = 0.8965), while digits 2 and 3 achieved high AUC values of 0.9752 and 0.9663, respectively. These findings suggest that the amount of writer-identifying information captured by the network differs across digits. However, the observed differences may also reflect the model’s learned representations and the sampled test pairs, rather than inherent differences in the digits themselves.</p>
+<div class="cell" data-tbl-cap="Held-out pair accuracy by session relation and pair type.">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Held-out pair accuracy by session relation and pair type.</caption>
+<colgroup>
+<col style="width: 27%">
+<col style="width: 26%">
+<col style="width: 11%">
+<col style="width: 13%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">session_relation</th>
+<th style="text-align: left;">pair_type</th>
+<th style="text-align: right;">n_pairs</th>
+<th style="text-align: right;">accuracy</th>
+<th style="text-align: right;">mean_distance</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Different sessions</td>
+<td style="text-align: left;">Different writers</td>
+<td style="text-align: right;">2394</td>
+<td style="text-align: right;">0.8450</td>
+<td style="text-align: right;">0.8719</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Different sessions</td>
+<td style="text-align: left;">Same writer</td>
+<td style="text-align: right;">2437</td>
+<td style="text-align: right;">0.8445</td>
+<td style="text-align: right;">0.3848</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Same session</td>
+<td style="text-align: left;">Different writers</td>
+<td style="text-align: right;">606</td>
+<td style="text-align: right;">0.8086</td>
+<td style="text-align: right;">0.8530</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Same session</td>
+<td style="text-align: left;">Same writer</td>
+<td style="text-align: right;">563</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">0.1232</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The results show that recording-session differences are associated with reduced same-writer matching performance. Sensitivity decreased from <strong>100% for same-session pairs to 84.45% for different-session pairs</strong>, while the mean embedding distance increased from <strong>0.1232 to 0.3848</strong>. This indicates that the network found handwriting samples from the same writer less similar when they came from different recording sessions. Specificity was <strong>80.86% for same-session pairs</strong> and <strong>84.50% for different-session pairs</strong>, showing a smaller difference in the model’s ability to distinguish different writers. Overall, session variation was associated with a greater reduction in same-writer recognition than in different-writer discrimination.</p>
+</section>
+<section id="generalisation-possible-leakage-and-limitations" class="level2" data-number="9.5">
+<h2 data-number="9.5" class="anchored" data-anchor-id="generalisation-possible-leakage-and-limitations"><span class="header-section-number">9.5</span> Generalisation, possible leakage, and limitations</h2>
+<p>For the Siamese experiment, the 20 writers were split into 14 training writers, three validation writers and three test writers <strong>before</strong> pair generation. No writer appears in more than one split, so the test evaluates whether the learned distance representation can verify <strong>previously unseen writers</strong>. Validation pairs determine the network configuration and cutoff; test pairs are used only for final evaluation. This reduces writer-level leakage and avoids choosing a favourable cutoff after seeing the test labels.</p>
+<p>The individual images can appear in more than one pair within a split, so pair observations are not statistically independent. Only three unseen test writers were evaluated, and the outcomes depend on the balanced, same-digit pair-generation procedure. A single writer partition and one random training seed per candidate also limit conclusions about the stability of model selection. Finally, the simulated images are not necessarily representative of real handwriting.</p>
+</section>
+</section>
+<section id="comparison-of-cnn-and-siamese-network-performance" class="level1" data-number="10">
+<h1 data-number="10"><span class="header-section-number">10</span> Comparison of CNN and Siamese Network Performance</h1>
+<section id="overall-model-performance" class="level3" data-number="10.0.1">
+<h3 data-number="10.0.1" class="anchored" data-anchor-id="overall-model-performance"><span class="header-section-number">10.0.1</span> Overall Model Performance</h3>
+<p>The CNN and Siamese networks were developed to investigate two related but different tasks: writer identification and writer verification. The CNN aimed to identify the writer of a handwritten digit among 20 known writers, while the Siamese network aimed to determine whether two handwriting samples belonged to the same writer.</p>
+<p>The selected CNN (Model 3) achieved a validation accuracy of 61.00% and a test accuracy of <strong>54.74%</strong> on the held-out recording session. Its top-3 test accuracy was 86.22%, indicating that the correct writer was frequently among the three highest-scoring predictions, even when the model’s first prediction was incorrect.</p>
+<p>In comparison, the selected Siamese Baseline achieved a validation ROC AUC of approximately 0.982 and a test ROC AUC of <strong>0.936</strong> on previously unseen writers. Its test accuracy was 85.60%, with an Equal Error Rate (EER) of 14.30%, sensitivity of 87.40% and specificity of 83.80%. These results indicate that the Siamese network learned useful similarity representations for distinguishing same-writer and different-writer handwriting pairs.</p>
+<p>Although the Siamese network achieved a higher numerical test accuracy, this does not necessarily mean it performed better than the CNN. The CNN performs multiclass classification among 20 writers, whereas the Siamese network performs binary verification on balanced pairs of samples. Therefore, their accuracy values cannot be compared directly to determine which model is superior.</p>
+</section>
+<section id="performance-across-digits" class="level3" data-number="10.0.2">
+<h3 data-number="10.0.2" class="anchored" data-anchor-id="performance-across-digits"><span class="header-section-number">10.0.2</span> Performance Across Digits</h3>
+<p>Both models showed differences in performance across handwritten digits. For the CNN, digit 1 achieved the highest identification accuracy of 64.10%, while digit 0 had the lowest accuracy of 45.20%. In contrast, the Siamese network achieved its highest verification accuracy on digit 0 (92.60%), with a corresponding ROC AUC of 0.987, while digit 4 produced the lowest verification accuracy of 73.50% and ROC AUC of 0.877.</p>
+<p>These findings suggest that the handwriting features useful for identifying known writers may differ from those useful for determining whether two samples belong to the same writer. However, differences in the training objectives and test partitions may also contribute to the contrasting digit-level results.</p>
+</section>
+<section id="generalisation-across-writers-and-recording-sessions" class="level3" data-number="10.0.3">
+<h3 data-number="10.0.3" class="anchored" data-anchor-id="generalisation-across-writers-and-recording-sessions"><span class="header-section-number">10.0.3</span> Generalisation Across Writers and Recording Sessions</h3>
+<p>The CNN was trained using Sessions 1–3, validated on Session 4 and tested on Session 5. This strategy evaluated whether the model could identify previously observed writers under different recording conditions. Performance varied considerably across writers, with Writers 11 and 18 achieving 100% accuracy, while Writers 5 and 13 achieved 0%. This suggests that some writers possessed more easily distinguishable handwriting characteristics, while others were frequently confused with different writers.</p>
+<p>In contrast, the Siamese network was trained using 14 writers, validated using three writers and tested using three previously unseen writers. This evaluated whether the model could generalise its learned similarity representations to new individuals. Same-writer verification accuracy decreased from 100% for pairs within the same recording session to 84.45% for pairs from different sessions. The mean embedding distance also increased from 0.123 to 0.385, indicating that handwriting variation across sessions made matching more challenging.</p>
+</section>
+<section id="overall-interpretation" class="level3" data-number="10.0.4">
+<h3 data-number="10.0.4" class="anchored" data-anchor-id="overall-interpretation"><span class="header-section-number">10.0.4</span> Overall Interpretation</h3>
+<p>Both models demonstrated an ability to learn writer-related information from the simulated handwriting dataset, but their strengths were associated with different objectives. The CNN provided direct identification among known writers, although its performance varied across writers and recording sessions. The Siamese network demonstrated strong verification performance on previously unseen writers, but its accuracy was affected by digit identity and session variation.</p>
+<p>The CNN is therefore more appropriate for identifying writers from a fixed set of known individuals, while the Siamese approach is more suitable for verifying whether handwriting samples belong to the same individual, including writers not encountered during training. Nevertheless, the models cannot be ranked directly because of differences in their prediction tasks and evaluation strategies. The use of simulated handwriting and the small number of unseen writers in the Siamese test set also limit generalisation to real-world handwriting recognition.</p>
+</section>
+</section>
+<section id="conclusion" class="level1" data-number="11">
+<h1 data-number="11"><span class="header-section-number">11</span> Conclusion</h1>
+<p>This project investigated the use of CNN and Siamese neural networks for writer recognition using 25,000 simulated handwritten digit images from 20 writers. Exploratory analysis revealed variations in handwriting across writers, digits and recording sessions.</p>
+<p>The CNN achieved a test accuracy of <strong>54.74%</strong> and a top-3 accuracy of <strong>86.22%</strong> when identifying known writers from an unseen recording session. The Siamese network achieved a test accuracy of <strong>85.60%</strong> and ROC AUC of <strong>0.936</strong> when verifying previously unseen writers. However, both models showed performance differences across digits and recording sessions.</p>
+<p>Overall, both approaches demonstrated the ability to learn writer-specific handwriting characteristics. The CNN was suited to identifying known writers, while the Siamese network was more suitable for verifying unseen writers. However, their results are not directly comparable because they address different tasks. The simulated dataset and limited number of unseen writers also restrict generalisability. Future work could explore larger datasets and improved models to enhance recognition performance.</p>
+</section>
+<section id="ai-use-statement" class="level1" data-number="12">
+<h1 data-number="12"><span class="header-section-number">12</span> AI use statement</h1>
+<p>ChatGPT was used during this project to assist with understanding neural-network concepts, discussing train-validation-test strategies, debugging and restructuring R/Keras code, and refining explanations of the CNN and Siamese modelling approaches. It was also used to suggest ways of organising the hyperparameter analysis and interpreting evaluation measures.</p>
+<p>AI-generated material was not included without review. All code was run by the group, outputs were checked against the actual dataset and model results, and numerical results reported in the final submission were taken from our own executions rather than generated by AI. Explanatory text suggested by the tool was edited and rewritten to reflect our own understanding and the specific results obtained in this analysis.</p>
+<p>ChatGPT was also used for guidance on Git/GitHub workflows, including branches, commits and pull requests. Final modelling decisions, interpretations and report content were reviewed by the group.</p>
+</section>
+<section id="plagiarism-declaration" class="level1" data-number="13">
+<h1 data-number="13"><span class="header-section-number">13</span> Plagiarism declaration</h1>
+<p>We declare that this report is our own work. All external sources have been appropriately acknowledged, and the use of generative AI tools has been disclosed in the AI Use Statement. All analyses and reported numerical results were produced from the supplied dataset using the code contained in our project repository. We understand the methods, code and interpretations presented in this report and are able to reproduce and explain them.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
