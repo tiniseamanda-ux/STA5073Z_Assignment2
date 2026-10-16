@@ -1,13 +1,17 @@
 ---
 title: "Assignment 2: Image Classification with Neural Networks"
 author:
-  - "Motlatsi Seeko"
+  - "Group Member 1"
   - "Group Member 2"
   - "Group Member 3"
 format:
   html:
     toc: true
     number-sections: true
+execute:
+  warning: false
+  message: false    
+    
 ---
 
 ## cnn model
@@ -15,8 +19,6 @@ format:
 
 
 # Setup
-
-
 
 ```{r}
 library(tidyverse)
@@ -27,17 +29,6 @@ set_random_seed(2026)
 data <- readRDS("handwriting.rds")
 meta <- data$metadata
 x <- data$images / 255
-```
-
-
-
-
-```{r}
-image(
-  t(apply(img, 2, rev)),
-  col = gray.colors(256),
-  axes = FALSE
-)
 ```
 
 
@@ -441,7 +432,7 @@ Performance also varied substantially across individual writers, as shown in @tb
 
 The confusion matrix in @tbl-cnn-confusion provides further insight into these classification errors. The diagonal entries represent correctly classified images, while off-diagonal entries indicate cases where a writer was predicted as another writer. For example, Writer 11 was correctly classified in all 250 test images, whereas all 250 images belonging to Writer 5 were misclassified. Of these, 154 were predicted as Writer 13. Other notable confusion patterns included Writer 10 being predicted as Writer 2 in 200 cases and Writer 13 being predicted as Writer 8 in 82 cases. These patterns suggest that the model struggled to distinguish certain writers, potentially because their handwriting features were similar.
 
-```{r echo= false }
+```{r echo= FALSE }
 #| label: tbl-cnn-confusion
 #| tbl-cap: "CNN Confusion Matrix on the Test Set"
 
@@ -466,5 +457,6 @@ ggplot(
   ) +
   theme_minimal()
 ```
+
 
 
