@@ -1,32 +1,51 @@
-========================================================================
+================================================================================================
 STA5073Z - ASSIGNMENT 2 SUBMISSION RECEIPT
-========================================================================
+================================================================================================
 
-------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
 (a) GROUP MEMBERS AND ROLE DELEGATION
-------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------
 Member 1: Amanda Tinise
-- Role: 
-- Tasks:  
+- Role: Siamese Network Developer & Project Logistics Manager
+- Tasks Executed: 
+  * Handled Task 3: Constructed the twin Siamese network architecture utilizing 
+    contrastive/triplet loss to estimate writer verification metrics.
+  * Handled Task 4: Collaborated on split validation controls to ensure non-overlapping 
+    session signatures during Siamese training pair generation.
+  * Logistics: Managed the local Git workflow adjustments, terminal alignments, 
+    and synchronization of the team's remote version histories.  
 
 Member 2: Sephetha Ngwana
-- Role:
-- Tasks:  
+- Role: CNN Architect
+- Tasks Executed: 
+  * Handled Task 1: Explored the dataset images and metadata across diverse 
+    people, digits, and sessions; documented visible sources of variation 
+    and identified simulated data limitations.
+  * Handled Task 2: Formulated the writer ID classification task, built 
+    and trained the standard CNN architecture, and evaluated digit-by-digit performance.
+  * Handled Task 4: Developed and justified the train/validation/test split 
+    strategy to mitigate data leakage and manage performance optimism.  
 
 Member 3: Motlatsi Seeko
-- Role:  
-- Tasks:  
+- Role: Optimization Specialist & Editorial Director
+- Tasks Executed: 
+  * Handled Task 5: Conducted hyperparameter tuning loops on the network models 
+    to map performance sensitivity matrices across learning rates and dropouts.
+  * Handled Task 6: Drafted the final critical analysis comparing CNN vs. Siamese 
+    performance, detailing digit informational values and inter-session degradation.
+  * Compiled Report: Structured the final analytical report pipeline and cross-checked 
+    statistical definitions.
 
 
-------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
 (b) GITHUB PAGES WEBSITE LINK
-------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
 URL: 
 
 
-------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
 (c) GITHUB SOURCE REPOSITORY LINK
-------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
 URL: https://github.com/tiniseamanda-ux/STA5073Z_Assignment2 
 
-========================================================================
+===============================================================================================
