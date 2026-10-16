@@ -1,0 +1,945 @@
+---
+title: "Assignment 2: Image Classification with Neural Networks"
+author:
+  - "Group Member 1"
+  - "Group Member 2"
+  - "Group Member 3"
+format:
+  html:
+    toc: true
+    number-sections: true
+    
+execute:
+  warning: false
+  message: false    
+---
+
+
+```{r}
+library(tidyverse)
+library(keras3)
+
+use_backend("tensorflow")
+set_random_seed(2026)
+data <- readRDS("handwriting.rds")
+meta <- data$metadata
+x <- data$images / 255
+```
+
+# Task 3 and Task 5: Siamese network
+
+Siamese split by writer
+
+```{r}
+set.seed(2026)
+
+w <- sample(1:20)
+
+writers <- list(
+  train = w[1:14],
+  val = w[15:17],
+  test = w[18:20]
+)
+
+split_sia <- case_when(
+  meta$person_id %in% writers$train ~ "train",
+  meta$person_id %in% writers$val   ~ "val",
+  TRUE                              ~ "test"
+)
+
+stopifnot(
+  length(intersect(writers$train, writers$test)) == 0,
+  length(intersect(writers$train, writers$val))  == 0,
+  length(intersect(writers$val, writers$test))   == 0
+)
+
+```
+
+## 4.1 Rows in each writer split
+
+```{r}
+rows <- lapply(
+  c(train = "train", val = "val", test = "test"),
+  function(s) which(split_sia == s)
+)
+
+length(rows$train)
+length(rows$val)
+length(rows$test)
+```
+
+## 4.2 Pair-construction function
+
+```{r}
+make_pairs <- function(rows, n, same_digit = TRUE) {
+
+  p <- meta$person_id[rows]
+  d <- meta$digit[rows]
+
+  by_pd <- split(rows, paste(p, d))
+  by_p <- split(rows, p)
+
+  writers <- unique(p)
+
+  pick <- function(v) {
+    v[sample.int(length(v), 1)]
+  }
+
+  a <- sample(rows, n, replace = TRUE)
+
+  # 1 = same writer, 0 = different writer
+  y <- rep(c(1L, 0L), length.out = n)
+
+  b <- integer(n)
+
+  for (k in seq_len(n)) {
+
+    pa <- meta$person_id[a[k]]
+    da <- meta$digit[a[k]]
+
+    if (y[k] == 1L) {
+
+      pool <- if (same_digit) {
+        by_pd[[paste(pa, da)]]
+      } else {
+        by_p[[as.character(pa)]]
+      }
+
+      pool <- setdiff(pool, a[k])
+
+    } else {
+
+      pb <- pick(setdiff(writers, pa))
+
+      pool <- if (same_digit) {
+        by_pd[[paste(pb, da)]]
+      } else {
+        by_p[[as.character(pb)]]
+      }
+    }
+
+    b[k] <- pick(pool)
+  }
+
+  tibble(
+    a = a,
+    b = b,
+    y = y,
+    digit_a = meta$digit[a],
+    digit_b = meta$digit[b],
+    sess_a = meta$session[a],
+    sess_b = meta$session[b]
+  )
+}
+```
+
+## 4.3 Create train, validation and test pairs
+
+```{r}
+set.seed(2026)
+
+pairs <- list(
+  train = make_pairs(rows$train, 30000),
+  val = make_pairs(rows$val, 6000),
+  test = make_pairs(rows$test, 6000)
+)
+
+table(pairs$train$y)
+table(pairs$val$y)
+table(pairs$test$y)
+
+table(pairs$train$digit_a == pairs$train$digit_b)
+table(pairs$val$digit_a == pairs$val$digit_b)
+table(pairs$test$digit_a == pairs$test$digit_b)
+```
+
+## 4.4 Convert pair indices to model inputs
+
+```{r}
+get_xy <- function(pr) {
+
+  list(
+    x = list(
+      x[pr$a, , , , drop = FALSE],
+      x[pr$b, , , , drop = FALSE]
+    ),
+
+    y = matrix(
+      pr$y,
+      ncol = 1
+    )
+  )
+}
+
+tr <- get_xy(pairs$train)
+va <- get_xy(pairs$val)
+te <- get_xy(pairs$test)
+```
+
+### Data Partitioning Strategy, Generalisation and Potential Leakage
+
+**Data Partitioning Strategy**
+
+The dataset was partitioned at the writer level, with 14 writers (70%) allocated to training, three (15%) to validation and three (15%) to testing. This writer-disjoint strategy ensures that no individual writer appears in more than one subset. Training pairs were used to learn handwriting similarities, validation pairs were used for hyperparameter optimisation and threshold selection, and test pairs were reserved for final model evaluation.
+
+Positive pairs consisted of two images from the same writer, while negative pairs contained images from different writers. Pair construction was restricted to images representing the same digit to prevent differences in digit identity from influencing writer verification. A balanced distribution of positive and negative pairs was maintained, with 30,000 training pairs, 6,000 validation pairs and 6,000 test pairs.
+
+**Generalisation and Potential Data Leakage**
+
+Unlike the CNN, which identifies known writers in a new recording session, the Siamese network evaluates whether two handwriting samples belong to the same person when the writers were not encountered during training. This assesses the model's ability to generalise its learned similarity representations to previously unseen writers.
+
+Splitting writers before constructing image pairs reduces the risk of data leakage, as handwriting samples from training writers cannot appear in the validation or test sets. Furthermore, selecting hyperparameters and the matching threshold using validation data prevents the test set from influencing model selection, reducing the risk of overly optimistic performance estimates.
+
+Individual images may be reused across multiple pairs within the same subset, meaning that pair observations are not statistically independent. Also, the test set contains only three unseen writers, limiting the generalisability of the results. Since pairs were balanced and restricted to matching digits, the reported performance may also differ under real-world conditions with different writer populations, digit combinations and matching frequencies.
+
+The writer-disjoint strategy provides a good evaluation of the Siamese network's ability to verify previously unseen writers while minimising leakage between the training, validation and test sets.
+
+## 4.5 Encoder
+
+```{r}
+build_encoder <- function(
+  emb = 32,
+  filters = 32,
+  dropout = 0.2
+) {
+
+  keras_model_sequential(
+    input_shape = c(28, 28, 1)
+  ) |>
+    layer_conv_2d(
+      filters,
+      kernel_size = 3,
+      activation = "relu",
+      padding = "same"
+    ) |>
+    layer_max_pooling_2d(pool_size = 2) |>
+    layer_conv_2d(
+      filters * 2,
+      kernel_size = 3,
+      activation = "relu",
+      padding = "same"
+    ) |>
+    layer_max_pooling_2d(pool_size = 2) |>
+    layer_flatten() |>
+    layer_dropout(dropout) |>
+    layer_dense(emb)
+}
+```
+
+## 4.6 Contrastive loss
+
+```{r}
+contrastive_loss <- function(margin = 1) {
+
+  function(y_true, y_pred) {
+
+    y_true <- op_cast(
+      y_true,
+      "float32"
+    )
+
+    pos <- y_true * op_square(y_pred)
+
+    neg <- (1 - y_true) *
+      op_square(
+        op_maximum(
+          margin - y_pred,
+          0
+        )
+      )
+
+    op_mean(pos + neg)
+  }
+}
+```
+
+## 4.7 Siamese model builder
+
+```{r}
+build_siamese <- function(
+  emb = 32,
+  filters = 32,
+  dropout = 0.2,
+  margin = 1,
+  lr = 1e-3
+) {
+
+  encoder <- build_encoder(
+    emb = emb,
+    filters = filters,
+    dropout = dropout
+  )
+
+  in_a <- keras_input(
+    shape = c(28, 28, 1)
+  )
+
+  in_b <- keras_input(
+    shape = c(28, 28, 1)
+  )
+
+  encoded_a <- encoder(in_a)
+  encoded_b <- encoder(in_b)
+
+  diff <- layer_subtract(
+    list(
+      encoded_a,
+      encoded_b
+    )
+  )
+
+  dist <- layer_lambda(
+    diff,
+    function(d) {
+      op_sqrt(
+        op_maximum(
+          op_sum(
+            op_square(d),
+            axis = -1L,
+            keepdims = TRUE
+          ),
+          1e-9
+        )
+      )
+    }
+  )
+
+  model <- keras_model(
+    inputs = list(in_a, in_b),
+    outputs = dist
+  )
+
+  model |> compile(
+    optimizer = optimizer_adam(
+      learning_rate = lr
+    ),
+    loss = contrastive_loss(
+      margin = margin
+    )
+  )
+
+  model
+}
+```
+
+# Siamese hyperparameter models
+
+## 4.8 Siamese Model 1: baseline
+
+```{r}
+set_random_seed(2026)
+
+siam1 <- build_siamese(
+  emb = 32,
+  filters = 32,
+  dropout = 0.2,
+  margin = 1,
+  lr = 1e-3
+)
+
+hist1_sia <- siam1 |> fit(
+  tr$x,
+  tr$y,
+  epochs = 20,
+  batch_size = 128,
+  validation_data = list(va$x, va$y),
+  callbacks = list(
+    callback_early_stopping(
+      monitor = "val_loss",
+      patience = 3,
+      restore_best_weights = TRUE
+    )
+  )
+)
+
+plot(hist1_sia)
+```
+
+## 4.9 Siamese Model 2: more dropout
+
+```{r}
+set_random_seed(2026)
+
+siam2 <- build_siamese(
+  emb = 32,
+  filters = 32,
+  dropout = 0.5,
+  margin = 1,
+  lr = 1e-3
+)
+
+hist2_sia <- siam2 |> fit(
+  tr$x,
+  tr$y,
+  epochs = 20,
+  batch_size = 128,
+  validation_data = list(va$x, va$y),
+  callbacks = list(
+    callback_early_stopping(
+      monitor = "val_loss",
+      patience = 3,
+      restore_best_weights = TRUE
+    )
+  )
+)
+
+plot(hist2_sia)
+```
+
+## 4.10 Siamese Model 3: smaller embedding and lower learning rate
+
+```{r}
+set_random_seed(2026)
+
+siam3 <- build_siamese(
+  emb = 16,
+  filters = 32,
+  dropout = 0.5,
+  margin = 1,
+  lr = 1e-4
+)
+
+hist3_sia <- siam3 |> fit(
+  tr$x,
+  tr$y,
+  epochs = 20,
+  batch_size = 128,
+  validation_data = list(va$x, va$y),
+  callbacks = list(
+    callback_early_stopping(
+      monitor = "val_loss",
+      patience = 3,
+      restore_best_weights = TRUE
+    )
+  )
+)
+
+plot(hist3_sia)
+```
+
+## 4.11 Siamese Model 4: larger embedding and lower learning rate
+
+```{r}
+set_random_seed(2026)
+
+siam4 <- build_siamese(
+  emb = 32,
+  filters = 32,
+  dropout = 0.5,
+  margin = 1,
+  lr = 1e-4
+)
+
+hist4_sia <- siam4 |> fit(
+  tr$x,
+  tr$y,
+  epochs = 20,
+  batch_size = 128,
+  validation_data = list(va$x, va$y),
+  callbacks = list(
+    callback_early_stopping(
+      monitor = "val_loss",
+      patience = 3,
+      restore_best_weights = TRUE
+    )
+  )
+)
+
+plot(hist4_sia)
+```
+
+## 4.12 Siamese Model 5: smaller embedding with original learning rate
+
+```{r}
+set_random_seed(2026)
+
+siam5 <- build_siamese(
+  emb = 16,
+  filters = 32,
+  dropout = 0.5,
+  margin = 1,
+  lr = 1e-3
+)
+
+hist5_sia <- siam5 |> fit(
+  tr$x,
+  tr$y,
+  epochs = 20,
+  batch_size = 128,
+  validation_data = list(va$x, va$y),
+  callbacks = list(
+    callback_early_stopping(
+      monitor = "val_loss",
+      patience = 3,
+      restore_best_weights = TRUE
+    )
+  )
+)
+
+plot(hist5_sia)
+```
+
+The training and validation loss curves for the five Siamese models were used to assess learning behaviour, convergence and potential overfitting. Comparing these curves helped identify configurations with lower validation loss and evaluate whether training remained stable. Model 3 achieved the lowest minimum validation loss (0.0748), followed by Model 4 (0.0749). However, the Baseline achieved the highest validation AUC (0.9825), demonstrating that lower validation loss does not necessarily translate into better writer-verification performance. Therefore, the loss curves were used as supporting diagnostic evidence, while **validation AUC was the primary criterion for selecting the Baseline model** for final evaluation.
+
+## 4.13 Siamese tuning comparison
+
+```{r}
+siamese_tuning_results <- tibble(
+  model = c(
+    "Baseline",
+    "Model 2",
+    "Model 3",
+    "Model 4",
+    "Model 5"
+  ),
+
+  embedding = c(
+    32,
+    32,
+    16,
+    32,
+    16
+  ),
+
+  filters = c(
+    32,
+    32,
+    32,
+    32,
+    32
+  ),
+
+  dropout = c(
+    0.2,
+    0.5,
+    0.5,
+    0.5,
+    0.5
+  ),
+
+  margin = c(
+    1,
+    1,
+    1,
+    1,
+    1
+  ),
+
+  learning_rate = c(
+    1e-3,
+    1e-3,
+    1e-4,
+    1e-4,
+    1e-3
+  ),
+
+  min_val_loss = c(
+    min(hist1_sia$metrics$val_loss),
+    min(hist2_sia$metrics$val_loss),
+    min(hist3_sia$metrics$val_loss),
+    min(hist4_sia$metrics$val_loss),
+    min(hist5_sia$metrics$val_loss)
+  ),
+
+  best_val_loss_epoch = c(
+    which.min(hist1_sia$metrics$val_loss),
+    which.min(hist2_sia$metrics$val_loss),
+    which.min(hist3_sia$metrics$val_loss),
+    which.min(hist4_sia$metrics$val_loss),
+    which.min(hist5_sia$metrics$val_loss)
+  )
+)
+
+siamese_tuning_results
+```
+
+
+# Reproducibility: saving important objects
+
+```{r}
+saveRDS(siam1, "siam1_model.rds")
+saveRDS(siam2, "siam2_model.rds")
+saveRDS(siam3, "siam3_model.rds")
+saveRDS(siam4, "siam4_model.rds")
+saveRDS(siam5, "siam5_model.rds")
+
+saveRDS(hist1_sia$metrics, "siam1_history_metrics.rds")
+saveRDS(hist2_sia$metrics, "siam2_history_metrics.rds")
+saveRDS(hist3_sia$metrics, "siam3_history_metrics.rds")
+saveRDS(hist4_sia$metrics, "siam4_history_metrics.rds")
+saveRDS(hist5_sia$metrics, "siam5_history_metrics.rds")
+
+write.csv(
+  siamese_tuning_results,
+  "siamese_tuning_results.csv",
+  row.names = FALSE
+)
+```
+
+
+# Siamese model selection and final evaluation
+
+The five candidate models above are compared using **validation ROC AUC**, because the practical task is to discriminate same-writer from different-writer pairs. Contrastive loss is useful for fitting the embeddings, but loss values alone need not rank verification performance consistently. Smaller embedding distances indicate stronger evidence of a match. The test data are held out until **both the model and decision threshold** have been selected from validation data.
+
+## Validation AUC and model selection
+
+```{r}
+#| label: siamese-validation-selection
+#| tbl-cap: "Validation discrimination for the five Siamese candidate models."
+
+# ROC AUC via average ranks: larger scores must indicate same-writer pairs.
+auc_binary <- function(y, score) {
+  y <- as.integer(y)
+  n_pos <- sum(y == 1L)
+  n_neg <- sum(y == 0L)
+  stopifnot(n_pos > 0L, n_neg > 0L, length(y) == length(score))
+  (sum(rank(score, ties.method = "average")[y == 1L]) -
+     n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
+}
+
+# All five fitted candidate models already exist in the preceding chunks.
+candidates <- list(
+  Baseline = siam1, `Model 2` = siam2, `Model 3` = siam3,
+  `Model 4` = siam4, `Model 5` = siam5
+)
+
+val_scores <- lapply(candidates, function(m) {
+  -as.numeric(predict(m, va$x, batch_size = 128, verbose = 0))
+})
+
+validation_comparison <- tibble(
+  model = names(candidates),
+  val_auc = vapply(val_scores, function(z) auc_binary(va$y[, 1], z), numeric(1))
+) |>
+  left_join(siamese_tuning_results |> select(model, min_val_loss), by = "model") |>
+  arrange(desc(val_auc))
+
+knitr::kable(validation_comparison, digits = 4)
+best_name <- validation_comparison$model[1]
+best_siamese <- candidates[[best_name]]
+best_val_score <- val_scores[[best_name]]
+```
+
+The selected configuration is `r best_name`, with validation AUC `r round(max(validation_comparison$val_auc), 4)`. AUC measures ranking across possible thresholds; unlike test accuracy it does not depend on one chosen cutoff.Although Model 3 achieved the lowest validation loss, its AUC was lower than that of the Baseline, demonstrating that a lower contrastive loss does not necessarily correspond to better writer-verification performance. The small differences in AUC across the five models suggest limited sensitivity to the hyperparameter configurations tested. Therefore, the Baseline was selected for final evaluation. 
+
+# Saving the validation-selected model
+```{r}
+
+# Save the selected Siamese model's trained weights
+keras3::save_model_weights(
+  best_siamese,
+  "best_siamese.weights.h5",
+  overwrite = TRUE
+)
+
+# Save the original validation predictions
+saveRDS(
+  list(
+    best_name = best_name,
+    best_val_score = best_val_score
+  ),
+  "best_siamese_validation.rds"
+)
+
+cat("Saved weights for:", best_name, "\n")
+```
+
+# Robustness analysis: repeat the best Siamese model with 3 seeds
+
+```{r}
+
+# Hyperparameter settings for the five models
+configs <- list(
+  "Baseline" = list(emb = 32, filters = 32, dropout = 0.2,
+                    margin = 1, lr = 0.001),
+  "Model 2" = list(emb = 32, filters = 32, dropout = 0.5,
+                   margin = 1, lr = 0.001),
+  "Model 3" = list(emb = 16, filters = 32, dropout = 0.5,
+                   margin = 1, lr = 0.0001),
+  "Model 4" = list(emb = 32, filters = 32, dropout = 0.5,
+                   margin = 1, lr = 0.0001),
+  "Model 5" = list(emb = 16, filters = 32, dropout = 0.5,
+                   margin = 1, lr = 0.001)
+)
+
+# Use the best configuration selected by validation AUC
+best_config <- configs[[best_name]]
+
+# Train with three different random seeds
+seeds <- c(101L, 202L, 303L)
+auc_values <- numeric(length(seeds))
+
+for (i in seq_along(seeds)) {
+
+  set_random_seed(seeds[i])
+
+  model_run <- do.call(build_siamese, best_config)
+
+  model_run |> fit(
+    tr$x,
+    tr$y,
+    epochs = 20,
+    batch_size = 128,
+    validation_data = list(va$x, va$y),
+    callbacks = list(
+      callback_early_stopping(
+        monitor = "val_loss",
+        patience = 3,
+        restore_best_weights = TRUE
+      )
+    ),
+    verbose = 0
+  )
+
+  # Predict validation distances
+  distances <- as.numeric(
+    predict(model_run, va$x,
+            batch_size = 128, verbose = 0)
+  )
+
+  # Calculate validation AUC
+  auc_values[i] <- auc_binary(
+    va$y[, 1],
+    -distances
+  )
+
+  # Free memory before the next run
+  rm(model_run, distances)
+  keras3::clear_session()
+  gc()
+}
+
+# Individual AUC results
+robustness_results <- data.frame(
+  Seed = seeds,
+  Validation_AUC = auc_values
+)
+
+print(robustness_results)
+
+# Mean and standard deviation
+robustness_summary <- data.frame(
+  Mean_AUC = mean(auc_values),
+  SD_AUC = sd(auc_values),
+  Minimum_AUC = min(auc_values),
+  Maximum_AUC = max(auc_values)
+)
+
+print(robustness_summary)
+
+# Save results
+write.csv(
+  robustness_results,
+  "siamese_robustness_results.csv",
+  row.names = FALSE
+)
+
+```
+The selected Baseline Siamese model was retrained using three random seeds to assess the stability of its validation performance. The model achieved a mean validation AUC of **0.9795**, with a standard deviation of **0.0042**, and individual AUC values ranging from **0.9748 to 0.9831**. These results indicate consistently strong discrimination between same-writer and different-writer pairs, with some sensitivity to training randomness. The original Baseline AUC of 0.9825 falls within this range. However, the variation across seeds is greater than the original AUC difference between the Baseline and Model 4 (0.0006), suggesting that the Baseline's small observed advantage may not be consistent across repeated runs.
+
+```{r}
+# Restore the original validation-selected Siamese model
+
+# Load saved validation information
+saved_validation <- readRDS(
+  "best_siamese_validation.rds"
+)
+
+best_name <- saved_validation$best_name
+best_val_score <- saved_validation$best_val_score
+
+# Rebuild the same network architecture
+best_config <- configs[[best_name]]
+
+best_siamese <- do.call(
+  build_siamese,
+  best_config
+)
+
+# Restore the trained weights
+keras3::load_model_weights(
+  best_siamese,
+  "best_siamese.weights.h5"
+)
+
+# Verify restored predictions
+restored_val_score <- -as.numeric(
+  predict(
+    best_siamese,
+    va$x,
+    batch_size = 128,
+    verbose = 0
+  )
+)
+
+max_difference <- max(
+  abs(restored_val_score - best_val_score)
+)
+
+cat("Restored model:", best_name, "\n")
+cat("Maximum prediction difference:", max_difference, "\n")
+
+stopifnot(
+  is.finite(max_difference),
+  max_difference < 1e-5
+)
+
+cat("Model restored successfully.\n")
+```
+
+## Select a matching threshold using validation pairs
+
+To turn distances into same/different decisions, we choose a threshold using **only validation pairs**. Here the threshold maximises balanced accuracy (mean sensitivity and specificity); the same cutoff is applied unchanged to the test data.
+
+```{r}
+#| label: siamese-validation-threshold
+#| tbl-cap: "Validation performance at the selected matching threshold."
+
+choose_threshold <- function(y, score) {
+  y <- as.integer(y)
+  u <- sort(unique(score))
+  stopifnot(length(u) >= 2L)
+  cuts <- c(-Inf, (head(u, -1) + tail(u, -1)) / 2, Inf)
+  vals <- vapply(cuts, function(t) {
+    pred <- as.integer(score >= t)
+    c(sens = mean(pred[y == 1L] == 1L),
+      spec = mean(pred[y == 0L] == 0L))
+  }, numeric(2))
+  balanced <- colMeans(vals)
+  k <- which.max(balanced)
+  list(threshold = cuts[k], sens = vals[1, k],
+       spec = vals[2, k], balanced_accuracy = balanced[k])
+}
+
+val_threshold <- choose_threshold(va$y[, 1], best_val_score)
+knitr::kable(tibble(
+  score_threshold = val_threshold$threshold,
+  distance_threshold = -val_threshold$threshold,
+  sensitivity = val_threshold$sens,
+  specificity = val_threshold$spec,
+  balanced_accuracy = val_threshold$balanced_accuracy
+), digits = 4)
+```
+
+## Held-out test matching performance
+
+```{r}
+#| label: siamese-final-test
+#| tbl-cap: "Final Siamese verification performance on three previously unseen writers."
+
+test_distance <- as.numeric(predict(best_siamese, te$x, batch_size = 128, verbose = 0))
+test_score <- -test_distance
+truth <- as.integer(te$y[, 1])
+test_pred <- as.integer(test_score >= val_threshold$threshold)
+
+test_sensitivity <- mean(test_pred[truth == 1L] == 1L)
+test_specificity <- mean(test_pred[truth == 0L] == 0L)
+test_auc <- auc_binary(truth, test_score)
+
+# Approximate EER from all score cutoffs (no threshold tuning on test data).
+eer_approx <- function(y, score) {
+  y <- as.integer(y)
+  cuts <- sort(unique(score))
+  errors <- vapply(cuts, function(t) {
+    pred <- as.integer(score >= t)
+    c(fnr = mean(pred[y == 1L] == 0L),
+      fpr = mean(pred[y == 0L] == 1L))
+  }, numeric(2))
+  k <- which.min(abs(errors[1, ] - errors[2, ]))
+  mean(errors[, k])
+}
+
+test_eer <- eer_approx(truth, test_score)
+siamese_test_metrics <- tibble(
+  model = best_name, test_auc = test_auc, test_eer = test_eer,
+  accuracy = mean(test_pred == truth),
+  sensitivity = test_sensitivity, specificity = test_specificity,
+  distance_threshold = -val_threshold$threshold
+)
+knitr::kable(siamese_test_metrics, digits = 4)
+```
+
+On held-out writers, the chosen model obtained ROC AUC `r round(test_auc, 4)` and approximate EER `r round(test_eer, 4)`. At the **validation-selected** threshold, sensitivity was `r round(test_sensitivity, 4)` (same-writer pairs correctly matched) and specificity was `r round(test_specificity, 4)` (different-writer pairs correctly rejected). 
+
+## ROC curve and embedding-distance distributions
+
+```{r}
+#| label: fig-siamese-roc
+#| fig-cap: "Held-out test ROC curve for writer verification."
+#| fig-width: 6
+#| fig-height: 4.5
+
+roc_points <- tibble(cut = c(Inf, sort(unique(test_score), decreasing = TRUE), -Inf)) |>
+  mutate(
+    sensitivity = vapply(cut, function(t) mean(test_score[truth == 1L] >= t), numeric(1)),
+    false_positive_rate = vapply(cut, function(t) mean(test_score[truth == 0L] >= t), numeric(1))
+  )
+
+ggplot(roc_points, aes(false_positive_rate, sensitivity)) +
+  geom_line(colour = "steelblue", linewidth = 0.8) +
+  geom_abline(slope = 1, intercept = 0, linetype = 2, colour = "gray60") +
+  coord_equal(xlim = c(0, 1), ylim = c(0, 1)) +
+  labs(x = "False positive rate (1 - specificity)", y = "Sensitivity",
+       title = paste0("Test ROC AUC = ", round(test_auc, 4))) +
+  theme_minimal()
+```
+
+The ROC curve illustrates the Siamese network's ability to distinguish same-writer from different-writer pairs across different classification thresholds. The curve's position towards the upper-left corner indicates strong discrimination, with high sensitivity and relatively low false positive rates. This suggests that the model learned useful handwriting representations for verifying previously unseen writers. 
+
+```{r}
+#| label: fig-siamese-test-distances
+#| fig-cap: "Held-out test distance distributions for same- and different-writer pairs."
+#| fig-width: 7
+#| fig-height: 4.5
+
+test_pairs_result <- pairs$test |>
+  mutate(distance = test_distance, predicted_same = test_pred,
+         correct = predicted_same == y,
+         pair_type = if_else(y == 1L, "Same writer", "Different writers"),
+         session_relation = if_else(sess_a == sess_b, "Same session", "Different sessions"))
+
+ggplot(test_pairs_result, aes(distance, fill = pair_type)) +
+  geom_density(alpha = 0.35) +
+  geom_vline(xintercept = -val_threshold$threshold, linetype = "dashed") +
+  labs(x = "Embedding distance", y = "Density", fill = "Pair type") +
+  theme_minimal()
+```
+
+The embedding-distance distributions illustrate how the Siamese network distinguishes same-writer from different-writer pairs. Same-writer pairs generally have smaller distances, while different-writer pairs have larger distances. The dashed line represents the matching threshold selected using validation data, with pairs to the left classified as same-writer. The overlap between the distributions indicates that some pairs may be incorrectly classified, showing that the model does not achieve perfect separation.
+
+## Matching results by digit and session
+
+All pairs in this experiment were generated with `same_digit = TRUE`, so this is **same-digit verification**, not a test of matching two different digits. Accuracy by digit is therefore conditional on the particular threshold and test-pair sampling.
+
+```{r}
+#| label: siamese-digit-session-results
+#| tbl-cap: "Held-out Siamese matching accuracy by digit."
+
+digit_results <- test_pairs_result |>
+  group_by(digit_a) |>
+  summarise(n_pairs = n(), accuracy = mean(correct),
+            auc = auc_binary(y, -distance), .groups = "drop")
+knitr::kable(digit_results, digits = 4)
+```
+
+The Siamese network's matching performance varied across handwritten digits. **Digit 0 achieved the highest AUC (0.9866) and accuracy (92.57%)**, indicating the strongest writer discrimination among the five digits. **Digit 4 had the lowest AUC (0.8766) and accuracy (73.48%)**, suggesting greater difficulty distinguishing writers using this digit. Digit 1 also showed relatively lower performance (AUC = 0.8965), while digits 2 and 3 achieved high AUC values of 0.9752 and 0.9663, respectively. These findings suggest that the amount of writer-identifying information captured by the network differs across digits. However, the observed differences may also reflect the model's learned representations and the sampled test pairs, rather than inherent differences in the digits themselves.
+
+```{r}
+#| label: siamese-session-results
+#| tbl-cap: "Held-out pair accuracy by session relation and pair type."
+
+session_pair_results <- test_pairs_result |>
+  group_by(session_relation, pair_type) |>
+  summarise(n_pairs = n(), accuracy = mean(correct),
+            mean_distance = mean(distance), .groups = "drop")
+knitr::kable(session_pair_results, digits = 4)
+```
+
+The results show that recording-session differences are associated with reduced same-writer matching performance. Sensitivity decreased from **100% for same-session pairs to 84.45% for different-session pairs**, while the mean embedding distance increased from **0.1232 to 0.3848**. This indicates that the network found handwriting samples from the same writer less similar when they came from different recording sessions. Specificity was **80.86% for same-session pairs** and **84.50% for different-session pairs**, showing a smaller difference in the model's ability to distinguish different writers. Overall, session variation was associated with a greater reduction in same-writer recognition than in different-writer discrimination.
+
+## Generalisation, possible leakage, and limitations
+
+For the Siamese experiment, the 20 writers were split into 14 training writers, three validation writers and three test writers **before** pair generation. No writer appears in more than one split, so the test evaluates whether the learned distance representation can verify **previously unseen writers**. Validation pairs determine the network configuration and cutoff; test pairs are used only for final evaluation. This reduces writer-level leakage and avoids choosing a favourable cutoff after seeing the test labels.
+
+The individual images can appear in more than one pair within a split, so pair observations are not statistically independent. Only three unseen test writers were evaluated, and the outcomes depend on the balanced, same-digit pair-generation procedure. A single writer partition and one random training seed per candidate also limit conclusions about the stability of model selection. Finally, the simulated images are not necessarily representative of real handwriting.
+
